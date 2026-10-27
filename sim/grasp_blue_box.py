@@ -3,13 +3,14 @@
 Usage: MUJOCO_GL=osmesa PYOPENGL_PLATFORM=osmesa .venv/bin/python grasp_blue_box.py
 Simulation only: friction/mass/pad geometry are placeholders, a pass here says nothing about the real gripper."""
 import os; os.environ.setdefault("MUJOCO_GL", "egl")
-import json, sys, numpy as np, mujoco, imageio.v2 as iio
+import json, sys, time, numpy as np, mujoco, imageio.v2 as iio
 from pathlib import Path
 from desk_scene import build_spec, reset, OUT, TABLE_TOP_Z
 
 SIDE = "left"
 GRIP_OPEN, GRIP_CLOSE = 0.044, 0.012      # ctrlrange -0.005..0.044 (v1, metres per finger); 0.012 -> ~50 N squeeze on a 4 cm box
-RENDER = os.environ.get("GRASP_RENDER", "1") == "1"
+VIEWER = "--viewer" in sys.argv          # live window instead of mp4 (needs a display)
+RENDER = os.environ.get("GRASP_RENDER", "1") == "1" and not VIEWER
 Z_GRASP, Z_LIFT = 0.385, 0.47
 X_PRE, X_GRASP = 0.33, 0.43               # tcp ~ fingertip: fingers span tcp_x-0.12 .. tcp_x
 
@@ -66,9 +67,17 @@ print("IK converged on all waypoints:", ok_ik, "| steps", len(q_pre), len(q_gras
 frames = []; log = {"phases": {}}
 r = mujoco.Renderer(m, 480, 640) if RENDER else None; FPS = 30; every = int(round(1 / (FPS * dt)))
 tick = [0]
+if VIEWER:
+    import mujoco.viewer
+    view = mujoco.viewer.launch_passive(m, d)
+    view.cam.lookat[:] = [0.42, 0.1, 0.4]; view.cam.distance = 1.1; view.cam.azimuth = 150; view.cam.elevation = -20
+    time.sleep(1.5)
 def step(n=1):
     for _ in range(n):
         mujoco.mj_step(m, d); tick[0] += 1
+        if VIEWER and tick[0] % 16 == 0:
+            if not view.is_running(): sys.exit(0)
+            view.sync(); time.sleep(16 * dt)      # ~real time
         if RENDER and tick[0] % every == 0:
             fr = []
             for cam in ("grasp_cam", "overview"):
@@ -106,6 +115,9 @@ step(int(1.0 / dt))                                    # hold 1 s after the lift
 box_end = d.body("blue_box").xpos.copy(); contacts_end = finger_contacts(); tcp_end = d.xpos[bid].copy()
 rise = float(box_end[2] - box_before[2]); rel = float(np.linalg.norm(box_end - tcp_end))
 if r: r.close()
+if VIEWER:
+    print("Done - close the viewer window to exit.")
+    while view.is_running(): view.sync(); time.sleep(0.05)
 if RENDER: iio.mimsave(OUT / "grasp_blue_box.mp4", frames, fps=FPS, macro_block_size=1)
 if RENDER:
     iio.imwrite(OUT / "grasp_blue_box_last.png", frames[-1]); iio.imwrite(OUT / "grasp_blue_box_mid.png", frames[len(frames) // 2])

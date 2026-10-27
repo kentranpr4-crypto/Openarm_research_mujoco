@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """OpenArm v1 desk scene: table + 3 free objects (blue box, red cylinder, green cube), built with MjSpec on top of
 openarm_mujoco/v1/scene.xml (upstream files untouched). Checks AC-01..04 and renders views.
-Usage: MUJOCO_GL=osmesa .venv/bin/python desk_scene.py   (use MUJOCO_GL=egl where EGL exists)
+Usage: .venv/bin/python desk_scene.py [--viewer]   (headless cloud: MUJOCO_GL=osmesa PYOPENGL_PLATFORM=osmesa)
 Dimensions/masses/friction are plausible placeholders, NOT measured from the real desk or objects."""
 import os; os.environ.setdefault("MUJOCO_GL", "egl")
 import sys, json, numpy as np, mujoco, imageio.v2 as iio
@@ -55,6 +55,9 @@ def reset(m, d):
 
 def main():
     m = build_spec().compile(); d = mujoco.MjData(m)
+    if "--viewer" in sys.argv:            # interactive window: desk + 3 objects + robot at the home pose
+        import mujoco.viewer
+        reset(m, d); mujoco.viewer.launch(m, d); return
     res = {"nq": m.nq, "nv": m.nv, "nu": m.nu, "nbody": m.nbody, "ngeom": m.ngeom}
     print("AC-01 loaded:", res)
     reset(m, d)

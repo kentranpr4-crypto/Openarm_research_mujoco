@@ -1,0 +1,53 @@
+{
+ "phases": {
+  "grasp_pose": {
+   "tcp": [
+    0.432,
+    0.122,
+    0.3923
+   ],
+   "tcp_target": [
+    0.43,
+    0.12,
+    0.385
+   ],
+   "box": [
+    0.42,
+    0.12,
+    0.3799
+   ]
+  }
+ },
+ "ik_converged": true,
+ "box_rise_m": 0.0745,
+ "box_to_tcp_after_hold_m": 0.0175,
+ "contacts_after_close": [
+  "openarm_left_left_finger_collision",
+  "openarm_left_right_finger_collision"
+ ],
+ "contacts_after_hold": [
+  "openarm_left_left_finger_collision",
+  "openarm_left_right_finger_collision"
+ ],
+ "finger_q_after_close": [
+  0.0204,
+  0.0205
+ ],
+ "box_end": [
+  0.4191,
+  0.1199,
+  0.4544
+ ],
+ "tcp_end": [
+  0.4298,
+  0.1201,
+  0.4683
+ ],
+ "box_xy_shift_during_close_m": 0.0003,
+ "other_objects_xy_shift_m": {
+  "red_cylinder": 0.0,
+  "green_cube": 0.0
+ },
+ "frames": 140,
+ "nan": false
+}

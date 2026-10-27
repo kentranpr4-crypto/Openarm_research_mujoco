@@ -1,0 +1,72 @@
+{
+ "model": {
+  "nq": 39,
+  "nv": 36,
+  "nu": 16,
+  "nbody": 30,
+  "ngeom": 92
+ },
+ "drift": {
+  "blue_box": 0.000557133415762711,
+  "red_cylinder": 0.0005576386476937292,
+  "green_cube": 0.0005571334171428609
+ },
+ "zerr": {
+  "blue_box": -0.0005571334037925979,
+  "red_cylinder": -0.0005575943941768524,
+  "green_cube": -0.0005571334037925424
+ },
+ "speed": {
+  "blue_box": 1.8050616415414564e-10,
+  "red_cylinder": 2.4572998499493677e-05,
+  "green_cube": 1.8090959260420027e-10
+ },
+ "nan": false,
+ "robot_object_contacts": [],
+ "reach": {
+  "blue_box": {
+   "arm": "right",
+   "ik_residual_m": 0.0009,
+   "horiz_dist_nearest_home_tcp_m": 0.035
+  },
+  "red_cylinder": {
+   "arm": "right",
+   "ik_residual_m": 0.0007,
+   "horiz_dist_nearest_home_tcp_m": 0.033
+  },
+  "green_cube": {
+   "arm": "right",
+   "ik_residual_m": 0.001,
+   "horiz_dist_nearest_home_tcp_m": 0.19
+  }
+ },
+ "tcp_home": {
+  "left": [
+   0.406,
+   0.152,
+   0.477
+  ],
+  "right": [
+   0.406,
+   -0.152,
+   0.477
+  ]
+ },
+ "obj_home": {
+  "blue_box": [
+   0.42,
+   0.12,
+   0.38
+  ],
+  "red_cylinder": [
+   0.4,
+   -0.12,
+   0.39
+  ],
+  "green_cube": [
+   0.52,
+   0.0,
+   0.38
+  ]
+ }
+}

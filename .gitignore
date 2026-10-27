@@ -1,0 +1,5 @@
+.venv/
+sim/.venv/
+sim/out/
+sim/openarm_mujoco/
+__pycache__/

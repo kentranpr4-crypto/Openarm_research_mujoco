@@ -1,0 +1,17 @@
+# Ví dụ registry sau khi adapter + hygiene chạy xong (tham khảo rồi xoá file này)
+facts:
+- id: FACT.EXAMPLE.VERIFIED     # fact ĐÃ kiểm chứng → giữ value
+  key: Công suất thiết bị X
+  value: 500
+  unit: kg
+  status: VERIFIED
+  evidence: chứng nhận kiểm định số 15/2026
+  provenance_level: verified_primary
+- id: FACT.EXAMPLE.UNVERIFIED   # fact CHƯA kiểm chứng → value đã tách thành claim
+  key: Thị phần ước tính
+  claim: 12
+  verified_value: null           # ai gọi value sẽ lỗi — fail-loud, đúng chủ đích
+  unit: '%'
+  status: INT
+  evidence: ước tính nội bộ Q2
+  provenance_level: claim

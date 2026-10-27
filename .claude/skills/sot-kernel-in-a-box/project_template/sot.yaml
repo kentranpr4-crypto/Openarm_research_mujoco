@@ -1,0 +1,16 @@
+# sot.yaml · Config trung tâm của một org/dự án SOT. Copy nguyên template rồi sửa `org`.
+# Mọi tool (sot_baseline / sot_check / sot_publish / sot_bites) chỉ đọc file này — không hardcode.
+
+org: TEN_TO_CHUC_HOAC_DU_AN   # ← sửa
+
+paths:
+  source_dir: source_canonical      # file gốc (Excel, Word, CSV...) — nơi DUY NHẤT được sửa sự thật
+  registry_dir: registry            # fact YAML đã atomize (máy đọc được)
+  hashes_file: registry/source_hashes.yaml   # vân tay file gốc
+  backup_dir: registry/_backup      # backup tự động trước mọi lần ghi
+  token_file: index/.publish_token  # vé xuất hàng (sinh bởi gate, hết hạn khi registry đổi)
+  verify_log: index/verify_log.jsonl  # nhật ký mọi lần kiểm + publish
+
+hygiene_config: sot.hygiene.yaml    # từ vựng status/evidence của TỔ CHỨC BẠN (sửa file đó)
+
+digest_exclude: [source_hashes]     # file không tính vào digest của registry

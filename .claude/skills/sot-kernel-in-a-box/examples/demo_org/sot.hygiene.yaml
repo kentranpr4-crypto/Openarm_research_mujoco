@@ -1,0 +1,39 @@
+# sot.hygiene.yaml · Từ vựng provenance của tổ chức bạn (config cho hygiene.py).
+# Đây là file DUY NHẤT phải "dịch" sang ngôn ngữ nội bộ của bạn. Luật thì bất biến:
+# fact chưa kiểm chứng không được phơi `value` như sự thật cứng (nguyên tắc A3).
+
+# Key chứa DANH SÁCH fact trong mỗi file YAML (không phải field của fact!)
+fact_keys: [facts]
+skip_files: [source_hashes, placeholder]
+
+# status nội bộ của bạn → mức provenance. LIỆT ĐỦ MỌI BIẾN THỂ viết hoa/thường.
+status_provenance:
+  VERIFIED: verified_primary
+  CHỐT: verified_primary
+  INT: claim          # nội bộ ước tính — chưa được phơi value
+  DRAFT: claim
+  TBD: claim
+  FLAG: flagged
+  LEGACY: legacy
+
+# Fact không có status: evidence khớp regex nào dưới đây → verified_primary
+primary_evidence_patterns:
+  - hợp đồng
+  - giấy phép
+  - chứng nhận
+  - kiểm định
+  - datasheet
+  - certif
+  - 'iso ?\d'
+  - lab test
+primary_provenance: verified_primary
+default_provenance: claim
+
+keys:
+  id: id
+  status: status
+  value: value
+  claim: claim
+  verified_value: verified_value
+  evidence: evidence
+  provenance: provenance_level

@@ -1,0 +1,20 @@
+domain: training-demo
+entity_label: Chương trình đào tạo giả lập
+schema:
+  type_field: null
+  fields:
+  - category
+  - duration
+  - cost
+  - schedule
+rollup_field: category
+universe:
+  estimate: 3
+  basis: Ba chương trình trong catalogue giả lập đóng; không đại diện thị trường.
+alias_map:
+  Khoá Alpha: Alpha
+ambiguous_clusters:
+- - Beta
+  - Beta Pro
+refresh_days:
+  default: 180

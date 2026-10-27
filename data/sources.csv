@@ -1,0 +1,49 @@
+name,url,category,priority,source_kind
+OpenArm meta repository,https://github.com/enactic/openarm,A_platform,P0,github
+OpenArm docs,https://docs.openarm.dev/,A_platform,P0,web
+openarm_hardware,https://github.com/enactic/openarm_hardware,A_platform,P0,github
+openarm_description,https://github.com/enactic/openarm_description,A_platform,P0,github
+openarm_can,https://github.com/enactic/openarm_can,A_platform,P0,github
+openarm_ros2,https://github.com/enactic/openarm_ros2,A_platform,P0,github
+openarm_teleop,https://github.com/enactic/openarm_teleop,A_platform,P0,github
+openarm_dataset,https://github.com/enactic/openarm_dataset,A_platform,P0,github
+openarm_mujoco,https://github.com/enactic/openarm_mujoco,A_platform,P0,github
+openarm_isaac_lab,https://github.com/enactic/openarm_isaac_lab,A_platform,P0,github
+OpenArm x LeRobot docs,https://github.com/huggingface/lerobot/blob/main/docs/source/openarm.mdx,A_platform,P0,github_file
+LeRobot,https://github.com/huggingface/lerobot,B_policy,P0,github
+ACT / ALOHA,https://tonyzhaozh.github.io/aloha/,B_policy,P0,web
+ACT official repo,https://github.com/tonyzhaozh/act,B_policy,P0,github
+Diffusion Policy,https://github.com/real-stanford/diffusion_policy,B_policy,P0,github
+OpenPI,https://github.com/Physical-Intelligence/openpi,B_policy,P0,github
+MP1,https://github.com/LogSSim/MP1,B_policy,P0,github
+OpenVLA,https://github.com/openvla/openvla,B_policy,P0,github
+LingBot VLA 1,https://github.com/Robbyant/lingbot-vla,B_policy,P0,github
+LingBot VLA 2,https://github.com/Robbyant/lingbot-vla-v2,B_policy,P0,github
+LingBot Depth,https://github.com/Robbyant/lingbot-depth,C_perception,P1,github
+DINOv2,https://github.com/facebookresearch/dinov2,C_perception,P1,github
+DINOv3,https://github.com/facebookresearch/dinov3,C_perception,P1,github
+SAM2,https://github.com/facebookresearch/sam2,C_perception,P1,github
+Grounding DINO,https://github.com/IDEA-Research/GroundingDINO,C_perception,P1,github
+FoundationPose,https://github.com/NVlabs/FoundationPose,C_perception,P1,github
+AnyGrasp,https://github.com/graspnet/anygrasp_sdk,C_perception,P1,github
+AlphaNIST,https://alpha-nist.github.io/,D_sim_rl,P1,web
+assembly-nist,https://github.com/suniique/assembly-nist,D_sim_rl,P1,github
+Isaac Lab,https://github.com/isaac-sim/IsaacLab,D_sim_rl,P1,github
+MuJoCo,https://github.com/google-deepmind/mujoco,D_sim_rl,P1,github
+ManiSkill,https://github.com/haosulab/ManiSkill,D_sim_rl,P1,github
+RoboTwin,https://github.com/RoboTwin-Platform/RoboTwin,D_sim_rl,P1,github
+LIBERO,https://github.com/Lifelong-Robot-Learning/LIBERO,D_sim_rl,P1,github
+robomimic,https://github.com/ARISE-Initiative/robomimic,D_sim_rl,P1,github
+HIL-SERL,https://github.com/rail-berkeley/hil-serl,D_sim_rl,P1,github
+OpenWAM,https://openwam.stanford.edu/,E_world_model,P1,web
+V-JEPA 2,https://github.com/facebookresearch/vjepa2,E_world_model,P1,github
+DreamerV3,https://github.com/danijar/dreamerv3,E_world_model,P1,github
+TD-MPC2,https://github.com/nicklashansen/tdmpc2,E_world_model,P1,github
+LingBot-VA,https://github.com/Robbyant/lingbot-va,E_world_model,P1,github
+LingBot-World,https://github.com/Robbyant/lingbot-world,E_world_model,P1,github
+World Models survey,https://github.com/Li-Zn-H/AwesomeWorldModels,E_world_model,P1,github
+Latent WM reading list,https://github.com/marcozzxx810/awesome-latent-world-models,E_world_model,P1,github
+DreamX-Phi,https://arxiv.org/abs/2608.13489,E_world_model,P1,arxiv
+DROID,https://droid-dataset.github.io/,F_data,P1,web
+Open X-Embodiment,https://robotics-transformer-x.github.io/,F_data,P1,web
+LeRobot datasets,https://huggingface.co/lerobot,F_data,P1,hf

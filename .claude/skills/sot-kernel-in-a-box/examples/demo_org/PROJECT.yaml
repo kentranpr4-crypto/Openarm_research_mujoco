@@ -1,0 +1,9 @@
+# PROJECT.yaml · Meta của dự án — điền đầu tiên, trước mọi thứ khác.
+project: AquaMekong (hư cấu — chỉ để demo)
+owner: Giám đốc kỹ thuật (demo)   # người quyết conflict + duyệt publish
+started: 'YYYY-MM-DD'
+goal: >
+  Một câu: kho sự thật này phục vụ quyết định gì / output gì.
+source_owners:                # mỗi file gốc phải có chủ
+  # vd: bang_gia.csv: CFO
+notes: ''

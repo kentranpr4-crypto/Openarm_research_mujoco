@@ -1,0 +1,49 @@
+{
+  "title": "",
+  "audience": {
+    "roles": [],
+    "priorKnowledge": "",
+    "afterSessionCanDo": ""
+  },
+  "presentation": {
+    "slideCount": null,
+    "durationMinutes": null,
+    "aspectRatio": "16:9",
+    "language": "vi",
+    "manualAdvance": true,
+    "ambientLoop": true,
+    "pauseAll": true,
+    "offlineViewer": true,
+    "targetDevices": []
+  },
+  "content": {
+    "sourceFiles": [],
+    "mainMessage": "",
+    "throughCase": null,
+    "unknowns": [],
+    "claimsNeedingVerification": []
+  },
+  "design": {
+    "direction": "",
+    "voice": "",
+    "illustrationStyle": "",
+    "retain": [],
+    "change": [],
+    "signature": {
+      "text": "",
+      "placement": ""
+    },
+    "qrSource": null
+  },
+  "interactions": [],
+  "deliverables": [
+    "html",
+    "notes",
+    "source"
+  ],
+  "acceptance": {
+    "technical": [],
+    "visual": [],
+    "realRoom": []
+  }
+}

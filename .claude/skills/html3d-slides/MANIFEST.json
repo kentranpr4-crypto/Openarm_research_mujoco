@@ -1,0 +1,34 @@
+{
+  "html3d-slides/SKILL.md": {
+    "bytes": 5346,
+    "sha256": "f7113fcc263179328f4fd6b152774dc4fe841b2e94934ac7b9d24dde70286213"
+  },
+  "html3d-slides/agents/openai.yaml": {
+    "bytes": 280,
+    "sha256": "328177efe952fa9875d78580bec125eb57594b54e99a254786ae5f5de120b281"
+  },
+  "html3d-slides/assets/brief.template.json": {
+    "bytes": 883,
+    "sha256": "7a489521b6f553659d7eaee4533aa793b60a1a0843d15c4ee2658371efcaa7f0"
+  },
+  "html3d-slides/assets/studio-profile.json": {
+    "bytes": 1425,
+    "sha256": "f436d0573b2243f004d7300c48db7081854769b4e4141f57a747c8b3a505afb4"
+  },
+  "html3d-slides/references/engineering.md": {
+    "bytes": 6024,
+    "sha256": "d2ff2a7bf2f301c62eec753cd7577b08c5938c47788650d5d400913c15ad202a"
+  },
+  "html3d-slides/references/qa-and-release.md": {
+    "bytes": 4635,
+    "sha256": "dbdba4aa0e3742ec2d806e1f9350b4feb3df5b9a3f6782091833b6b208b806a9"
+  },
+  "html3d-slides/references/workflow-and-design.md": {
+    "bytes": 4853,
+    "sha256": "f6a67a4928be9c8c6a97b63cc0925cc1b9d26dfa47dc45ebda1e77e738d8c25d"
+  },
+  "html3d-slides/scripts/measure-ui.js": {
+    "bytes": 3725,
+    "sha256": "85109505be03fd28fb09c4888f8152b31771713d3585da0e9b470e51bb2de36e"
+  }
+}

@@ -1,0 +1,55 @@
+generated_by: adapter_csv.py
+source: thiet_bi.csv
+facts:
+- id: FACT.PUMP.P100.PRICE
+  key: Giá bơm ly tâm P100
+  value: 125000000
+  unit: VND
+  status: VERIFIED
+  evidence: Hợp đồng mua HĐ-042/2026 + báo giá NCC
+  source:
+    file: source_canonical/thiet_bi.csv
+    row: 2
+  provenance_level: verified_primary
+- id: FACT.PUMP.P100.FLOW
+  key: Lưu lượng bơm P100
+  value: 50
+  unit: m3/h
+  status: VERIFIED
+  evidence: datasheet nhà sản xuất trang 3
+  source:
+    file: source_canonical/thiet_bi.csv
+    row: 3
+  provenance_level: verified_primary
+- id: FACT.PLANT.CAPACITY
+  key: Công suất nhà máy xử lý
+  value: 12000
+  unit: m3/ngày
+  status: VERIFIED
+  evidence: giấy phép vận hành 15/GP-2025
+  source:
+    file: source_canonical/thiet_bi.csv
+    row: 4
+  provenance_level: verified_primary
+- id: FACT.LEAK.RATE
+  key: Tỷ lệ thất thoát mạng lưới
+  claim: 18
+  verified_value:
+  unit: '%'
+  status: DRAFT
+  evidence: đo sơ bộ quý 1 chưa kiểm định
+  source:
+    file: source_canonical/thiet_bi.csv
+    row: 5
+  provenance_level: claim
+- id: FACT.EXPANSION.COST
+  key: Chi phí mở rộng giai đoạn 2
+  claim: 45
+  verified_value:
+  unit: tỷ VND
+  status: INT
+  evidence: ước tính nội bộ phòng kế hoạch
+  source:
+    file: source_canonical/thiet_bi.csv
+    row: 6
+  provenance_level: claim

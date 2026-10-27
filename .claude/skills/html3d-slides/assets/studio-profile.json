@@ -1,0 +1,65 @@
+{
+  "profileName": "studio-women-monoline",
+  "status": "tested_starting_values_not_universal",
+  "stage": {
+    "width": 1600,
+    "height": 900,
+    "safeX": 88
+  },
+  "colors": {
+    "paper": "#fbf9f7",
+    "ink": "#25324a",
+    "muted": "#5f6678",
+    "blush": "#e8b8c6",
+    "lilac": "#b9ace0",
+    "mint": "#a9cebc",
+    "cobalt": "#2e4dcb"
+  },
+  "fonts": {
+    "display": "Lora",
+    "body": "Be Vietnam Pro",
+    "embedded": true,
+    "licenses": "OFL"
+  },
+  "typePx": {
+    "cover": 104,
+    "title": 68,
+    "body": 28,
+    "label": 24,
+    "caption": 20,
+    "signature": 16
+  },
+  "spacingPx": {
+    "columnGapMinForTrial": 60,
+    "footerCaptionSignatureGapMinForTrial": 30
+  },
+  "graphics": {
+    "pixelRatioCap": 3,
+    "lowQualityRatio": 1,
+    "bakedStillScale": 2,
+    "labelTextureWidth": 2048,
+    "shadowMapSize": 2048,
+    "postprocessing": false,
+    "illustration": "monoline bitmap on curved paper plane, 2.5D"
+  },
+  "motion": {
+    "manualSemanticAdvance": true,
+    "ambientLoop": true,
+    "pauseCssAndCanvas": true,
+    "backgroundSeconds": [
+      24,
+      31,
+      42,
+      53
+    ]
+  },
+  "voice": {
+    "pronouns": "mình/bạn",
+    "avoidEditorial": [
+      "em dash",
+      "semicolon"
+    ],
+    "fictionalExamplesLabel": true
+  },
+  "adaptation": "Change audience, count, source, assets, QR, voice and verifier to the new task. These values are not guaranteed for every device."
+}

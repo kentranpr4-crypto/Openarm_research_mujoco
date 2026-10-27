@@ -1,0 +1,4 @@
+interface:
+  display_name: "Slide HTML 3D có bằng chứng"
+  short_description: "Dựng slide 3D rõ nội dung, tương tác và kiểm được"
+  default_prompt: "Dùng $html3d-slides để dựng một bộ slide HTML 3D theo nội dung và người xem mình cung cấp."

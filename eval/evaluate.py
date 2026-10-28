@@ -39,7 +39,9 @@ def run_agent_episode(agent, ckpt, n_act_steps, env, expert, idx, seed, region, 
     for t in range(T):
         i = env.info(); S.append(o["state"]); B.append(i["box_pos"]); TCP.append(i["tcp_pos"]); BS.append(i["box_speed"])
         if agent == "expert": a = plan["ctrl"][t]
-        else: a = runner.act(o["state"], o["images"])                       # <- state + images only
+        else:
+            if getattr(env, "state_perturb", None): o = dict(o, state=env.state_perturb(o["state"]))     # diagnostics only: perturb the idle right-arm state fed to the policy
+            a = runner.act(o["state"], o["images"])                       # <- state + images only
         A.append(np.asarray(a, np.float32))
         if save_video and "images" in o and o["images"]: frames.append(np.concatenate([o["images"][c] for c in sorted(o["images"])], 1))
         o = env.step(a)
@@ -51,7 +53,9 @@ def run_agent_episode(agent, ckpt, n_act_steps, env, expert, idx, seed, region, 
     if agent == "act":
         rec.update(latency_ms_all=runner.latency_ms, latency_ms_queries=runner.query_ms, clipped=runner.clipped, slewed=runner.slewed)
     if rollout_dir is not None:
-        rollout_dir.mkdir(parents=True, exist_ok=True); np.savez_compressed(rollout_dir / f"ep{idx:04d}.npz", state=S, action=A, box_pos=np.array(B), tcp_pos=np.array(TCP))
+        rollout_dir.mkdir(parents=True, exist_ok=True)
+        extra = dict(raw_action=np.array(runner.raw)) if runner is not None and runner.raw else {}     # policy output before clip/slew
+        np.savez_compressed(rollout_dir / f"ep{idx:04d}.npz", state=S, action=A, box_pos=np.array(B), tcp_pos=np.array(TCP), box_speed=np.array(BS), **extra)
     if frames and (save_video == "all" or not lab["task_success"] or idx < 2):
         import imageio.v2 as iio; video_dir.mkdir(parents=True, exist_ok=True)
         path = video_dir / f"ep{idx:04d}_{rec['outcome']}.mp4"
@@ -74,9 +78,14 @@ def worker(job):
         from policies.act_infer import ACTRunner
         import lab_scene
         probe = LabEnv(cameras=()); ad = ActionAdapter(probe.m, a["hz"]); probe.close()
-        runner = ACTRunner(a["ckpt"], ad, n_action_steps=a["n_action_steps"], threads=1); cams = tuple(runner.cams)
+        runner = ACTRunner(a["ckpt"], ad, n_action_steps=a["n_action_steps"], threads=1, temporal_ensemble=a.get("temporal_ensemble")); cams = tuple(runner.cams)
     env = LabEnv(image_hw=tuple(a["image_hw"]), control_hz=a["hz"], render_profile=a["render_profile"], cameras=cams)
-    env.runner = runner; expert = ScriptedExpert(env.m, control_hz=a["hz"])
+    env.runner = runner; expert = ScriptedExpert(env.m, control_hz=a["hz"]); env.state_perturb = None
+    if a.get("state_perturb") and a["agent"] == "act":
+        from safetensors.numpy import load_file
+        mean = load_file(str(Path(a["ckpt"]) / "policy_preprocessor_step_3_normalizer_processor.safetensors"))["observation.state.mean"]; prng = np.random.default_rng(123)
+        if a["state_perturb"] == "right_mean": env.state_perturb = lambda s, mean=mean: np.r_[s[:8], mean[8:]].astype(np.float32)
+        elif a["state_perturb"] == "right_jitter": env.state_perturb = lambda s, prng=prng: (s + np.r_[np.zeros(8), prng.normal(0, 1e-3, 8)]).astype(np.float32)
     out = Path(a["out"]) / a["agent"] / cond; res = []
     for idx in ids:
         r = run_agent_episode(a["agent"], a["ckpt"], a["n_action_steps"], env, expert, idx, a["seed"], region, pert, a["horizon"], out / "videos",
@@ -103,7 +112,7 @@ def main():
     ap.add_argument("--start", type=int, default=0); ap.add_argument("--horizon", type=int, default=200); ap.add_argument("--workers", type=int, default=1)
     ap.add_argument("--n-action-steps", type=int); ap.add_argument("--out", type=Path, default=ROOT / "outputs/eval/run"); ap.add_argument("--hz", type=int, default=20)
     ap.add_argument("--image-hw", type=int, nargs=2, default=[120, 160]); ap.add_argument("--render-profile", default="fast"); ap.add_argument("--no-video", dest="video", action="store_false")
-    ap.add_argument("--save-rollouts", action="store_true"); ap.add_argument("--ids", type=int, nargs="+", help="explicit episode indices (e.g. the raw ids of training episodes); overrides --start/--n")
+    ap.add_argument("--save-rollouts", action="store_true"); ap.add_argument("--state-perturb", choices=["right_mean", "right_jitter"], help="DIAGNOSTIC: replace/jitter the idle right-arm proprioception fed to the policy"); ap.add_argument("--temporal-ensemble", type=float, default=None, help="ACT temporal-ensembling coefficient (e.g. 0.01); implies n_action_steps=1"); ap.add_argument("--ids", type=int, nargs="+", help="explicit episode indices (e.g. the raw ids of training episodes); overrides --start/--n")
     a = ap.parse_args(); cfg = {k: (str(v) if isinstance(v, Path) else v) for k, v in vars(a).items()}
     if a.agent == "act" and not a.ckpt: sys.exit("--ckpt required for --agent act")
     summaries = {}

@@ -91,7 +91,7 @@ Throughput: render phần mềm 510 ms/ảnh với bóng + phản xạ + MSAA n�
 Môi trường: venv riêng `/home/user/.venvs/act` (LeRobot **0.6.1** cần Python ≥3.12, `numpy<2.3`; không cài chung venv sim). Phiên bản đóng băng ở `policies/requirements-act.txt`. Mirror CPU của PyTorch bị proxy chặn → torch 2.11 CUDA wheel chạy CPU; ImageNet weights không tải được → ResNet18 huấn luyện từ đầu.
 
 Files: `data/convert_lerobot.py`, `policies/{act_train,act_infer,open_loop_check}.py`, `eval/audit_policy_inputs.py`.
-- Adapter: raw npz → `LeRobotDataset.create` (ảnh PNG, không video), chỉ đưa state/velocity/ảnh/action; **không** đưa `eval.*`. Split theo episode có seed (`openarm_splits.json`): 54 train / 6 val; thống kê chuẩn hóa chỉ từ episode train.
+- Adapter: raw npz → `LeRobotDataset.create` (ảnh PNG, không video), chỉ đưa state/velocity/ảnh/action; **không** đưa `eval.*`. Split theo episode có seed (`openarm_splits.json`): 54 train / 6 val; **đính chính (audit 2026-10-28):** thống kê chuẩn hóa trong checkpoint được tính trên cả 60 episode (8172 khung, gồm 6 episode val) vì `ds_tr.meta.stats` là thống kê toàn dataset; ảnh hưởng lên các chiều có phương sai nhỏ hơn 1% std (xem `2026-10-28-act-v1-audit-v2-plan.md`), không ảnh hưởng các episode đánh giá.
 - ACT: input = `observation.state` + ảnh `front`, `wrist_left`; output chunk 20×16 (1 s); `use_vae=False` (expert tất định), dim 256, 4 head, 2 encoder layer, 14.0 M tham số, L1 loss, AdamW 1e-4, batch 16.
 
 | AC | Kết quả | Evidence |

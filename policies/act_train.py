@@ -5,7 +5,8 @@ Inputs  : observation.state (16) + camera images (default: front, wrist_left)   
 Outputs : action chunk (chunk_size x 16) = absolute joint-position targets in simulator ctrl order (see control/action_adapter.py)
 Design  : use_vae=False (the scripted expert is deterministic given the observation, so the CVAE latent adds nothing and
           costs CPU); ResNet18 backbone trained from scratch (ImageNet weights cannot be downloaded in this sandbox);
-          normalisation via LeRobot pre/post processors with dataset statistics of the TRAIN episodes only.
+          normalisation via LeRobot pre/post processors using dataset.meta.stats, which are statistics of the WHOLE converted dataset
+          (train + val episodes; audit 2026-10-28: <1% effect on the live dims, see docs/ai-native/tasks/2026-10-28-act-v1-audit-v2-plan.md).
 Split   : by EPISODE, from <dataset>/openarm_splits.json. --overfit N trains and validates on the first N train episodes.
 Usage   : python policies/act_train.py --dataset outputs/lerobot/x --out outputs/checkpoints/x --steps 2000 [--overfit 3]"""
 import sys, json, time, argparse, subprocess, random
@@ -56,7 +57,7 @@ def main():
     dts = {"action": [i / fps for i in range(a.chunk)]}
     ds_tr = LeRobotDataset("local/openarm_lab_pickplace", root=a.dataset, episodes=tr, delta_timestamps=dts)
     ds_va = LeRobotDataset("local/openarm_lab_pickplace", root=a.dataset, episodes=va, delta_timestamps=dts) if va else None
-    # statistics of the TRAIN episodes only (no leakage from validation episodes)
+    # NOTE: ds_tr.meta.stats are dataset-wide (all 60 episodes), NOT train-only; kept as-is for V1 reproducibility
     cfg = build(meta, a.cams, a); policy = ACTPolicy(cfg); policy.train()
     pre, post = make_pre_post_processors(cfg, dataset_stats=ds_tr.meta.stats)
     mk = lambda ds, sh: torch.utils.data.DataLoader(ds, batch_size=a.batch, shuffle=sh, num_workers=a.workers, drop_last=sh, persistent_workers=a.workers > 0)

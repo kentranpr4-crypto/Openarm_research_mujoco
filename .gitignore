@@ -3,3 +3,6 @@ sim/.venv/
 sim/out/
 sim/openarm_mujoco/
 __pycache__/
+
+# generated artifacts (datasets, checkpoints, videos, renders)
+outputs/

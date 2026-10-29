@@ -1,0 +1,205 @@
+{
+ "experiment": "E0 multi-seed: C0 vs S1 across independent training seeds",
+ "version": 1,
+ "frozen_on": "2026-10-29",
+ "code_commit": "89d19e1580c2cee01f82316b5cc1f32176cda619",
+ "purpose": {
+  "Q1": "Does S1's removal of right-arm-state brittleness replicate across training seeds (and does C0's brittleness replicate)?",
+  "Q2": "Is there a competence cost of S1 relative to C0 once between-seed training variance is accounted for?",
+  "Q3": "How large is training-seed variation compared with evaluation-sampling variation and scenario variation?",
+  "no_selection": "No final policy is selected by this experiment; the outcome is a recommendation only, the decision belongs to the owner."
+ },
+ "arms": {
+  "c0": {
+   "label": "C0",
+   "stats_source": "train_only",
+   "state_std_floor": null,
+   "action_std_floor": null,
+   "gripper_std_floor": null
+  },
+  "s1": {
+   "label": "S1",
+   "stats_source": "train_only",
+   "state_std_floor": 0.02,
+   "action_std_floor": null,
+   "gripper_std_floor": 0.002
+  }
+ },
+ "training_seeds": {
+  "reused_from_stage1": [
+   0
+  ],
+  "new": [
+   1,
+   2
+  ],
+  "note": "seed 0 = the a-priori V1 seed, never selected on outcome"
+ },
+ "reuse": {
+  "c0_seed0": {
+   "ckpt": "outputs/checkpoints/e6b_c0_seed0",
+   "eval_root": "outputs/eval/e6b/c0",
+   "model_sha256": "63b20d941dfc5f08309e6638f646df625245c600094ad9bbc56494be35313079",
+   "contract_sha256": "62beccac9e8e19b52687a3f2d5932fdc09ab2126af43470ff26406ab7ef5b3a2",
+   "train_threads": 4
+  },
+  "s1_seed0": {
+   "ckpt": "outputs/checkpoints/e6b_s1_seed0",
+   "eval_root": "outputs/eval/e6b/s1",
+   "model_sha256": "c7f95affcf8c98d662e0c7adf236d43ba68353200c90f3005259267fb663b7a8",
+   "contract_sha256": "4b7631a732a78092b99fd6d782e9990dbcee2fe98199923b605a98cc41674ada",
+   "train_threads": 4
+  }
+ },
+ "fixed_training": {
+  "dataset": "outputs/lerobot/pickplace_v1",
+  "split_file": "outputs/lerobot/pickplace_v1/openarm_splits.json",
+  "split_sha256": "8a57da1e5e866c87b6d8bc6dce290e3510f8a382079e4870b23a3dd6a10ba909",
+  "n_train_episodes": 54,
+  "n_val_episodes": 6,
+  "steps": 5400,
+  "batch": 16,
+  "lr": 0.0001,
+  "workers": 1,
+  "threads_new_runs": 3,
+  "val_every": 250,
+  "save_every": 1000,
+  "cams": [
+   "front",
+   "wrist_left"
+  ],
+  "chunk": 20,
+  "n_action_steps": 20,
+  "dim_model": 256,
+  "heads": 4,
+  "dim_ff": 1024,
+  "enc_layers": 2,
+  "dropout": 0.1,
+  "use_vae": false,
+  "pretrained_backbone": null,
+  "deviation_D1": "new runs use torch threads=3 (0.79 s/step) instead of 4 (1.28 s/step on the current VM, oversubscribed with the data-loader worker); thread count changes floating-point reduction order, so seed-0 (threads=4) and new seeds are not bit-comparable; they are independent realisations. A sensitivity analysis excluding seed 0 is part of the analysis."
+ },
+ "fixed_evaluation": {
+  "dev_seeds": [
+   21,
+   22
+  ],
+  "forbidden_seeds": [
+   31,
+   32,
+   33
+  ],
+  "render_profile": "fast",
+  "horizon": 200,
+  "hz": 20,
+  "exec_horizon": 20,
+  "temporal_ensemble": null,
+  "workers": 4,
+  "sets": {
+   "NOM": {
+    "tag": "nom21",
+    "condition": "nominal",
+    "seed": 21,
+    "ids": "0-29",
+    "n": 30
+   },
+   "BOUND21": {
+    "tag": "bound21",
+    "condition": "unseen_pose",
+    "seed": 21,
+    "ids": "0-29",
+    "n": 30
+   },
+   "BOUND22": {
+    "tag": "bound22",
+    "condition": "unseen_pose",
+    "seed": 22,
+    "ids": "0-29",
+    "n": 30
+   },
+   "SHORTCUT_right_mean": {
+    "tag": "pert_right_mean",
+    "condition": "nominal",
+    "seed": 21,
+    "ids": "0-19",
+    "n": 20,
+    "state_perturb": "right_mean"
+   },
+   "SHORTCUT_jitter_small": {
+    "tag": "pert_jit_small",
+    "condition": "nominal",
+    "seed": 21,
+    "ids": "0-19",
+    "n": 20,
+    "state_perturb": "right_jitter_small"
+   }
+  },
+  "dropped_vs_stage1": [
+   "pert_jit_large",
+   "ind_joints_small",
+   "ind_gripper_small"
+  ]
+ },
+ "metrics": [
+  "task_success",
+  "pick_success",
+  "shortcut_index_SI",
+  "grasp_tcp_height_dz_at_closing",
+  "action_jerk_all_interior_boundary",
+  "tracking_mean_arm",
+  "latency_per_query_p50_p95_p99",
+  "idle_right_arm_command_deviation",
+  "failure_taxonomy",
+  "transport_kinematics(peak TCP speed/accel)",
+  "training_cost(minutes, s/step)",
+  "val_l1_and_physical_val_mae"
+ ],
+ "analysis": {
+  "replicate_unit": "training seed",
+  "per_seed_statistic": "success proportion on each fixed evaluation set",
+  "across_seed_variation": "arm mean, sample SD (n=3), range of per-seed proportions; reported separately per scenario",
+  "within_seed_sampling": "Wilson 95% CI per seed per set; ratio of between-seed SD to binomial SE reported",
+  "across_scenario_variation": "separate tables for NOM, BOUND21, BOUND22 and each shortcut mode; scenario x seed matrix",
+  "inference": "Welch t on per-seed proportions (df Welch-Satterthwaite); exact permutation p over seed labels (min two-sided p=0.1 for 3 v 3) as secondary; hierarchical bootstrap (resample seeds then episodes) as sensitivity only",
+  "sensitivity": "all analyses repeated excluding seed 0",
+  "rules": {
+   "R1_robustness_replicates": "SUPPORTED iff S1 SI >= 0.90 for BOTH right_mean and jitter_small in >= 2 of 3 S1 seeds AND C0 SI <= 0.25 for ALL 3 C0 seeds; otherwise NOT SUPPORTED / MIXED",
+   "R2_competence_cost": {
+    "NOM_margin_pp": -10.0,
+    "BOUND_margin_pp": -15.0,
+    "rule": "difference = mean(S1)-mean(C0) of per-seed proportions in pp; NON-INFERIOR if Welch 95% CI lower bound >= margin (NOM: -10 pp; BOUND (pooled seeds 21+22): -15 pp); COST EVIDENT if CI upper bound < 0; otherwise INCONCLUSIVE"
+   },
+   "R3_recommendation": "S1 may be RECOMMENDED FOR FURTHER STUDY as a V2 baseline candidate iff R1 SUPPORTED and R2 NON-INFERIOR on both NOM and BOUND. R1 SUPPORTED but R2 INCONCLUSIVE -> report 'inconclusive, more seeds needed' with required n. R2 COST EVIDENT -> recommend NOT adopting S1's floor as-is. Never auto-adopt; the owner decides.",
+   "expected_power_note": "with 3 seeds per arm and an assumed between-seed SD of ~8 pp the 95% CI half-width of the difference is ~18 pp, so only large effects are resolvable; INCONCLUSIVE is a likely, acceptable outcome"
+  }
+ },
+ "budget": {
+  "measured": {
+   "train_s_per_step_threads3": 0.79,
+   "train_s_per_step_threads4": 1.28,
+   "train_min_per_run": 71,
+   "eval_s_per_episode_effective": 15,
+   "eval_episodes_per_checkpoint": 130
+  },
+  "estimate_h": {
+   "training": 4.7,
+   "evaluation": 2.3,
+   "total": 7.0
+  },
+  "plan_reference_h": 8.0,
+  "stop_rules": [
+   "average training speed over the first 200 steps of any new run > 1.10 s/step -> stop and report",
+   "projected total > 8.0 h -> stop and report",
+   "any evaluation command with a seed in forbidden_seeds -> abort",
+   "a crashed run may be re-run once with identical arguments, never with changed parameters",
+   "no parameter, threshold or evaluation-set change after this file is frozen"
+  ]
+ },
+ "forbidden": [
+  "S3 floor sweep",
+  "E1/E4/E5",
+  "adopting S1 or S2 as V2 baseline",
+  "held-out test seeds 31-33",
+  "experiments other than E0"
+ ]
+}

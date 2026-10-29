@@ -65,6 +65,28 @@ def run_agent_episode(agent, ckpt, n_act_steps, env, expert, idx, seed, region, 
         except Exception as e: print(f"[warn] video not written for ep {idx}: {type(e).__name__}: {e}", flush=True)
     return rec
 
+RIGHT_JOINTS, RIGHT_GRIPPER = slice(8, 15), 15          # state layout: 0-6 left joints, 7 left gripper, 8-14 right joints, 15 right gripper
+PERTURB_SIGMA = {"small": (1e-3, 1e-4), "large": (1e-2, 1e-3)}          # (joints [rad], gripper [m]) -> unit-correct jitter
+
+def make_state_perturb(mode, mean, prng):
+    """DIAGNOSTIC perturbations of the IDLE right-arm proprioception fed to the policy (the simulator state is untouched).
+    right_mean / right_joints_mean / right_gripper_mean : replace by the training mean;  right_jitter_{small,large}, right_joints_jitter_*, right_gripper_jitter_* :
+    fresh Gaussian noise every step, sigma = 1e-3 / 1e-2 rad for joints and 1e-4 / 1e-3 m for the gripper.  right_jitter = LEGACY V1 audit mode (1e-3 on ALL dims,
+    i.e. 1 mm on the gripper), kept only to reproduce the audit."""
+    mean = np.asarray(mean, np.float32)
+    if mode == "right_jitter": return lambda s: (s + np.r_[np.zeros(8), prng.normal(0, 1e-3, 8)]).astype(np.float32)
+    if mode.endswith("mean"):
+        idx = {"right_mean": np.arange(8, 16), "right_joints_mean": np.arange(8, 15), "right_gripper_mean": np.array([15])}[mode]
+        def f(s): s = s.copy(); s[idx] = mean[idx]; return s.astype(np.float32)
+        return f
+    kind = mode.rsplit("_", 1)[1]; sj, sg = PERTURB_SIGMA[kind]; which = "all" if mode.startswith("right_jitter") else ("joints" if "joints" in mode else "gripper")
+    def f(s):
+        n = np.zeros(16)
+        if which in ("all", "joints"): n[RIGHT_JOINTS] = prng.normal(0, sj, 7)
+        if which in ("all", "gripper"): n[RIGHT_GRIPPER] = prng.normal(0, sg)
+        return (s + n).astype(np.float32)
+    return f
+
 def worker(job):
     ids, a, cond = job
     os.environ.setdefault("LP_NUM_THREADS", "1")
@@ -84,8 +106,7 @@ def worker(job):
     if a.get("state_perturb") and a["agent"] == "act":
         from safetensors.numpy import load_file
         mean = load_file(str(Path(a["ckpt"]) / "policy_preprocessor_step_3_normalizer_processor.safetensors"))["observation.state.mean"]; prng = np.random.default_rng(123)
-        if a["state_perturb"] == "right_mean": env.state_perturb = lambda s, mean=mean: np.r_[s[:8], mean[8:]].astype(np.float32)
-        elif a["state_perturb"] == "right_jitter": env.state_perturb = lambda s, prng=prng: (s + np.r_[np.zeros(8), prng.normal(0, 1e-3, 8)]).astype(np.float32)
+        env.state_perturb = make_state_perturb(a["state_perturb"], mean, prng)
     out = Path(a["out"]) / a["agent"] / cond; res = []
     for idx in ids:
         r = run_agent_episode(a["agent"], a["ckpt"], a["n_action_steps"], env, expert, idx, a["seed"], region, pert, a["horizon"], out / "videos",
@@ -112,7 +133,7 @@ def main():
     ap.add_argument("--start", type=int, default=0); ap.add_argument("--horizon", type=int, default=200); ap.add_argument("--workers", type=int, default=1)
     ap.add_argument("--n-action-steps", type=int); ap.add_argument("--out", type=Path, default=ROOT / "outputs/eval/run"); ap.add_argument("--hz", type=int, default=20)
     ap.add_argument("--image-hw", type=int, nargs=2, default=[120, 160]); ap.add_argument("--render-profile", default="fast"); ap.add_argument("--no-video", dest="video", action="store_false")
-    ap.add_argument("--save-rollouts", action="store_true"); ap.add_argument("--state-perturb", choices=["right_mean", "right_jitter"], help="DIAGNOSTIC: replace/jitter the idle right-arm proprioception fed to the policy"); ap.add_argument("--temporal-ensemble", type=float, default=None, help="ACT temporal-ensembling coefficient (e.g. 0.01); implies n_action_steps=1"); ap.add_argument("--ids", type=int, nargs="+", help="explicit episode indices (e.g. the raw ids of training episodes); overrides --start/--n")
+    ap.add_argument("--save-rollouts", action="store_true"); ap.add_argument("--state-perturb", choices=["right_mean", "right_joints_mean", "right_gripper_mean", "right_jitter", "right_jitter_small", "right_jitter_large", "right_joints_jitter_small", "right_gripper_jitter_small", "right_joints_jitter_large", "right_gripper_jitter_large"], help="DIAGNOSTIC: replace/jitter the idle right-arm proprioception fed to the policy"); ap.add_argument("--temporal-ensemble", type=float, default=None, help="ACT temporal-ensembling coefficient (e.g. 0.01); implies n_action_steps=1"); ap.add_argument("--ids", type=int, nargs="+", help="explicit episode indices (e.g. the raw ids of training episodes); overrides --start/--n")
     a = ap.parse_args(); cfg = {k: (str(v) if isinstance(v, Path) else v) for k, v in vars(a).items()}
     if a.agent == "act" and not a.ckpt: sys.exit("--ckpt required for --agent act")
     summaries = {}

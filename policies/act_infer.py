@@ -20,6 +20,8 @@ class ACTRunner:
             self.policy.config.temporal_ensemble_coeff = temporal_ensemble; self.policy.config.n_action_steps = 1
             self.policy.temporal_ensembler = ACTTemporalEnsembler(temporal_ensemble, self.policy.config.chunk_size)
         self.pre, self.post = make_pre_post_processors(self.policy.config, pretrained_path=str(ckpt_dir))
+        from policies import norm_contract                      # E6-B: fail loud if the stored processors differ from norm_contract.json (V1: no file -> None)
+        self.contract = norm_contract.verify_checkpoint(ckpt_dir)
         self.adapter, self.cams = adapter, [k.split(".")[-1] for k in self.policy.config.image_features]
         self.prev_ctrl = None; self.latency_ms = []; self.query_ms = []; self.clipped = 0; self.slewed = 0; self.raw = []
         self.input_keys = sorted(self.policy.config.input_features)

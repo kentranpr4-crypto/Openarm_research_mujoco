@@ -13,6 +13,7 @@ import sys, json, time, argparse, subprocess, random
 from pathlib import Path
 import numpy as np, torch
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path: sys.path.insert(0, str(ROOT))
 
 def build(meta, cams, a):
     from lerobot.configs.types import FeatureType
@@ -43,6 +44,11 @@ def main():
     ap.add_argument("--overfit", type=int, default=0); ap.add_argument("--seed", type=int, default=0); ap.add_argument("--workers", type=int, default=2)
     ap.add_argument("--val-every", type=int, default=100); ap.add_argument("--save-every", type=int, default=500); ap.add_argument("--max-minutes", type=float, default=0)
     ap.add_argument("--threads", type=int, default=0)
+    # E6-B normalisation contract (policies/norm_contract.py). Defaults reproduce V1 exactly: dataset-wide stats, no floor.
+    ap.add_argument("--stats-source", choices=["dataset", "train_only"], default="dataset", help="dataset = V1 behaviour (stats.json, train+val); train_only = aggregate over TRAIN episodes")
+    ap.add_argument("--state-std-floor", type=float, default=None, help="rad floor for observation.state joint std (hypothesis; V1 = off)")
+    ap.add_argument("--action-std-floor", type=float, default=None, help="rad floor for action joint std (hypothesis; V1 = off)")
+    ap.add_argument("--gripper-std-floor", type=float, default=0.002, help="metre floor for the gripper dims, used whenever a state/action floor is on")
     a = ap.parse_args()
     if a.out.exists() and any(a.out.iterdir()): sys.exit(f"{a.out} is not empty; choose a new --out (existing checkpoints are never overwritten)")
     a.out.mkdir(parents=True, exist_ok=True)
@@ -57,19 +63,33 @@ def main():
     dts = {"action": [i / fps for i in range(a.chunk)]}
     ds_tr = LeRobotDataset("local/openarm_lab_pickplace", root=a.dataset, episodes=tr, delta_timestamps=dts)
     ds_va = LeRobotDataset("local/openarm_lab_pickplace", root=a.dataset, episodes=va, delta_timestamps=dts) if va else None
-    # NOTE: ds_tr.meta.stats are dataset-wide (all 60 episodes), NOT train-only; kept as-is for V1 reproducibility
+    # V1 behaviour (default): ds_tr.meta.stats are dataset-wide (all 60 episodes), NOT train-only. E6-B flags switch to the contract.
+    contract = None
+    if a.stats_source == "dataset" and a.state_std_floor is None and a.action_std_floor is None:
+        stats = ds_tr.meta.stats
+    else:
+        from policies import norm_contract as nc
+        stats_train = nc.aggregate(a.dataset, tr) if a.stats_source == "train_only" else ds_tr.meta.stats
+        sf = nc.floors_vector(a.state_std_floor, a.gripper_std_floor) if a.state_std_floor is not None else None
+        af = nc.floors_vector(a.action_std_floor, a.gripper_std_floor) if a.action_std_floor is not None else None
+        stats, binding = nc.apply_floor(stats_train, sf, af)
+        contract = nc.build_contract(a.stats_source, tr, stats_train, stats, sf, af, binding, a.dataset)
+        if a.stats_source == "train_only": assert contract["n_frames"] == len(ds_tr) or a.overfit, (contract["n_frames"], len(ds_tr))
+        print(f"norm contract: source={a.stats_source} frames={contract['n_frames']} binding={binding}", flush=True)
     cfg = build(meta, a.cams, a); policy = ACTPolicy(cfg); policy.train()
-    pre, post = make_pre_post_processors(cfg, dataset_stats=ds_tr.meta.stats)
+    pre, post = make_pre_post_processors(cfg, dataset_stats=stats)
     mk = lambda ds, sh: torch.utils.data.DataLoader(ds, batch_size=a.batch, shuffle=sh, num_workers=a.workers, drop_last=sh, persistent_workers=a.workers > 0)
     dl, dlv = mk(ds_tr, True), (mk(ds_va, False) if ds_va else None)
     opt = torch.optim.AdamW(policy.get_optim_params(), lr=a.lr, weight_decay=1e-4)
     nparam = sum(p.numel() for p in policy.parameters())
     info = dict(args={k: str(v) if isinstance(v, Path) else v for k, v in vars(a).items()}, n_params=nparam, train_episodes=tr, val_episodes=va, fps=fps,
-                n_train_frames=len(ds_tr), torch=torch.__version__, commit=subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip())
+                n_train_frames=len(ds_tr), norm_stats_source=a.stats_source, norm_contract=bool(contract), torch=torch.__version__, commit=subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip())
     (a.out / "train_info.json").write_text(json.dumps(info, indent=1)); print(f"params {nparam/1e6:.1f}M | train frames {len(ds_tr)} | episodes train {len(tr)} val {len(va)}", flush=True)
     log = open(a.out / "train_log.jsonl", "w"); t0 = time.time(); step = 0; it = iter(dl); ema = None
     def save(tag):
         d = a.out / tag; policy.save_pretrained(d); pre.save_pretrained(d); post.save_pretrained(d)
+        if contract is not None:
+            nc.write_contract(d / nc.CONTRACT_FILE, contract); nc.verify_checkpoint(d)      # fail loud if processors != contract
     while step < a.steps:
         try: b = next(it)
         except StopIteration: it = iter(dl); b = next(it)

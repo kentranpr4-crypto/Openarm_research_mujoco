@@ -1,0 +1,597 @@
+{
+ "name": "x-sweep (evaluation only)",
+ "registered": "2026-10-30, before any sweep episode was run",
+ "code_commit": "e5ca873f608016715f3a7f9d9b522b59d5b109a2",
+ "scope": {
+  "no_training": true,
+  "weights_frozen": true,
+  "normalization_contracts_frozen": true,
+  "action_adapter_controller_unchanged": true,
+  "task_success_criteria_unchanged": true,
+  "forbidden_seeds": [
+   31,
+   32,
+   33
+  ],
+  "eval_seed_label": 21,
+  "note": "poses are explicit synthetic dev configurations; the eval 'seed' only labels the run (21). No test seed is used. Training region (policies/baseline.py): x in [0.38,0.45], y in [0.07,0.13], yaw in [-0.20,0.20]."
+ },
+ "checkpoints": {
+  "c0_seed0": {
+   "path": "outputs/checkpoints/e6b_c0_seed0/last",
+   "model_sha256": "63b20d941dfc5f08309e6638f646df625245c600094ad9bbc56494be35313079",
+   "norm_contract_sha256": "62beccac9e8e19b52687a3f2d5932fdc09ab2126af43470ff26406ab7ef5b3a2"
+  },
+  "c0_seed1": {
+   "path": "outputs/checkpoints/e0_c0_seed1/last",
+   "model_sha256": "04faabfa6f7d9d0be8bb6090266f805f443535be254c0a798c602633bc4a567d",
+   "norm_contract_sha256": "e278e3df5c557a12c5c88fbe4c4c6c705a1376892cfa0035fa16118239f20a6c"
+  },
+  "c0_seed2": {
+   "path": "outputs/checkpoints/e0_c0_seed2/last",
+   "model_sha256": "32fb3341f2ca84c19378d9b3beb02bf8e7549401db20b78f18ac55cc55e7d09e",
+   "norm_contract_sha256": "e278e3df5c557a12c5c88fbe4c4c6c705a1376892cfa0035fa16118239f20a6c"
+  },
+  "s1_seed0": {
+   "path": "outputs/checkpoints/e6b_s1_seed0/last",
+   "model_sha256": "c7f95affcf8c98d662e0c7adf236d43ba68353200c90f3005259267fb663b7a8",
+   "norm_contract_sha256": "4b7631a732a78092b99fd6d782e9990dbcee2fe98199923b605a98cc41674ada"
+  },
+  "s1_seed1": {
+   "path": "outputs/checkpoints/e0_s1_seed1/last",
+   "model_sha256": "faa4c54aa3c6efdad8688067c4388beac25a43d5e57d923ea2ffb3962a7126c6",
+   "norm_contract_sha256": "3601197579d2427d8f110a538e6797fb13f472b44813cd1a87da0fa6331e4771"
+  },
+  "s1_seed2": {
+   "path": "outputs/checkpoints/e0_s1_seed2/last",
+   "model_sha256": "5bf4e07dc4d1d1fc38ff9c3e8e2fc444e0a7b212b7967b2b8ecbeae91e5b6c26",
+   "norm_contract_sha256": "3601197579d2427d8f110a538e6797fb13f472b44813cd1a87da0fa6331e4771"
+  }
+ },
+ "expert": "ScriptedExpert replayed on the same poses (h23_replay.replay_one), labels from eval.metrics.task_labels",
+ "x_grid_m": [
+  0.34,
+  0.35,
+  0.36,
+  0.37,
+  0.38,
+  0.39,
+  0.4,
+  0.41,
+  0.42,
+  0.43,
+  0.44,
+  0.45,
+  0.46,
+  0.47,
+  0.48
+ ],
+ "blocks": [
+  {
+   "block": 0,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "block": 1,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "block": 2,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "block": 3,
+   "y": 0.1,
+   "yaw": 0.2
+  }
+ ],
+ "n_poses": 60,
+ "poses": [
+  {
+   "idx": 0,
+   "block": 0,
+   "x": 0.34,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 1,
+   "block": 0,
+   "x": 0.35,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 2,
+   "block": 0,
+   "x": 0.36,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 3,
+   "block": 0,
+   "x": 0.37,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 4,
+   "block": 0,
+   "x": 0.38,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 5,
+   "block": 0,
+   "x": 0.39,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 6,
+   "block": 0,
+   "x": 0.4,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 7,
+   "block": 0,
+   "x": 0.41,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 8,
+   "block": 0,
+   "x": 0.42,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 9,
+   "block": 0,
+   "x": 0.43,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 10,
+   "block": 0,
+   "x": 0.44,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 11,
+   "block": 0,
+   "x": 0.45,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 12,
+   "block": 0,
+   "x": 0.46,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 13,
+   "block": 0,
+   "x": 0.47,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 14,
+   "block": 0,
+   "x": 0.48,
+   "y": 0.1,
+   "yaw": 0.0
+  },
+  {
+   "idx": 15,
+   "block": 1,
+   "x": 0.34,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 16,
+   "block": 1,
+   "x": 0.35,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 17,
+   "block": 1,
+   "x": 0.36,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 18,
+   "block": 1,
+   "x": 0.37,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 19,
+   "block": 1,
+   "x": 0.38,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 20,
+   "block": 1,
+   "x": 0.39,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 21,
+   "block": 1,
+   "x": 0.4,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 22,
+   "block": 1,
+   "x": 0.41,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 23,
+   "block": 1,
+   "x": 0.42,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 24,
+   "block": 1,
+   "x": 0.43,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 25,
+   "block": 1,
+   "x": 0.44,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 26,
+   "block": 1,
+   "x": 0.45,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 27,
+   "block": 1,
+   "x": 0.46,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 28,
+   "block": 1,
+   "x": 0.47,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 29,
+   "block": 1,
+   "x": 0.48,
+   "y": 0.08,
+   "yaw": -0.1
+  },
+  {
+   "idx": 30,
+   "block": 2,
+   "x": 0.34,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 31,
+   "block": 2,
+   "x": 0.35,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 32,
+   "block": 2,
+   "x": 0.36,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 33,
+   "block": 2,
+   "x": 0.37,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 34,
+   "block": 2,
+   "x": 0.38,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 35,
+   "block": 2,
+   "x": 0.39,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 36,
+   "block": 2,
+   "x": 0.4,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 37,
+   "block": 2,
+   "x": 0.41,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 38,
+   "block": 2,
+   "x": 0.42,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 39,
+   "block": 2,
+   "x": 0.43,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 40,
+   "block": 2,
+   "x": 0.44,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 41,
+   "block": 2,
+   "x": 0.45,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 42,
+   "block": 2,
+   "x": 0.46,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 43,
+   "block": 2,
+   "x": 0.47,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 44,
+   "block": 2,
+   "x": 0.48,
+   "y": 0.12,
+   "yaw": 0.1
+  },
+  {
+   "idx": 45,
+   "block": 3,
+   "x": 0.34,
+   "y": 0.1,
+   "yaw": 0.2
+  },
+  {
+   "idx": 46,
+   "block": 3,
+   "x": 0.35,
+   "y": 0.1,
+   "yaw": 0.2
+  },
+  {
+   "idx": 47,
+   "block": 3,
+   "x": 0.36,
+   "y": 0.1,
+   "yaw": 0.2
+  },
+  {
+   "idx": 48,
+   "block": 3,
+   "x": 0.37,
+   "y": 0.1,
+   "yaw": 0.2
+  },
+  {
+   "idx": 49,
+   "block": 3,
+   "x": 0.38,
+   "y": 0.1,
+   "yaw": 0.2
+  },
+  {
+   "idx": 50,
+   "block": 3,
+   "x": 0.39,
+   "y": 0.1,
+   "yaw": 0.2
+  },
+  {
+   "idx": 51,
+   "block": 3,
+   "x": 0.4,
+   "y": 0.1,
+   "yaw": 0.2
+  },
+  {
+   "idx": 52,
+   "block": 3,
+   "x": 0.41,
+   "y": 0.1,
+   "yaw": 0.2
+  },
+  {
+   "idx": 53,
+   "block": 3,
+   "x": 0.42,
+   "y": 0.1,
+   "yaw": 0.2
+  },
+  {
+   "idx": 54,
+   "block": 3,
+   "x": 0.43,
+   "y": 0.1,
+   "yaw": 0.2
+  },
+  {
+   "idx": 55,
+   "block": 3,
+   "x": 0.44,
+   "y": 0.1,
+   "yaw": 0.2
+  },
+  {
+   "idx": 56,
+   "block": 3,
+   "x": 0.45,
+   "y": 0.1,
+   "yaw": 0.2
+  },
+  {
+   "idx": 57,
+   "block": 3,
+   "x": 0.46,
+   "y": 0.1,
+   "yaw": 0.2
+  },
+  {
+   "idx": 58,
+   "block": 3,
+   "x": 0.47,
+   "y": 0.1,
+   "yaw": 0.2
+  },
+  {
+   "idx": 59,
+   "block": 3,
+   "x": 0.48,
+   "y": 0.1,
+   "yaw": 0.2
+  }
+ ],
+ "strata": {
+  "LOW_FAR_OOD": [
+   0.34,
+   0.35
+  ],
+  "LOW_NEAR_EDGE": [
+   0.36,
+   0.37
+  ],
+  "IN_SUPPORT": [
+   0.38,
+   0.39,
+   0.4,
+   0.41,
+   0.42,
+   0.43,
+   0.44,
+   0.45
+  ],
+  "HIGH_OOD": [
+   0.46,
+   0.47,
+   0.48
+  ]
+ },
+ "protocol": {
+  "agent": "act",
+  "condition": "nominal (no light/camera perturbation)",
+  "horizon": 200,
+  "hz": 20,
+  "render_profile": "fast",
+  "image_hw": [
+   120,
+   160
+  ],
+  "n_action_steps": "checkpoint default (same as E0 evals)",
+  "workers": 4,
+  "episodes_per_checkpoint": 60,
+  "policy_episodes": 360,
+  "deterministic": true,
+  "reuse": "eval/evaluate.py run_agent_episode, summarise unchanged; only the box-pose source is replaced by the explicit table"
+ },
+ "metrics": {
+  "live": [
+   "task_success",
+   "pick_success",
+   "place_success",
+   "final_box_to_tray_xy_m",
+   "final_box_z_err_m",
+   "outcome"
+  ],
+  "replay": [
+   "a_close_cm (box centre - TCP along fingers at closing)",
+   "slip_cm = a_release - a_close (lift/transport)",
+   "max_box_tcp_separation_carry",
+   "palm_contact (box-palm force>0.01 N between close and release)",
+   "finger_force_N at hold",
+   "finger_contact_a_cm at hold",
+   "cluster flag (post-pick failure, final x-x_tray<-2.5 cm and |y-y_tray|<1 cm)"
+  ]
+ },
+ "uncertainty": {
+  "primary": "seed-level paired difference S1-C0 (n=3 training seeds), two-sided t 95% CI (df=2) and sign count; per stratum, pooled over the 4 blocks of the stratum's x values",
+  "secondary": "Wilson 95% intervals per arm and x (n=12 episodes = 3 seeds x 4 blocks, descriptive, episodes are clustered by seed and block); block-resampling bootstrap within seed (within-checkpoint sampling only)",
+  "note": "3 seeds => CIs are wide; no claim of significance is made from n=3 alone"
+ },
+ "hypotheses": {
+  "HA": "Near-edge grasp depth: at x in LOW_NEAR_EDGE, mean a_close(S1) < mean a_close(C0) in >=2 of 3 seed pairs AND the mean paired difference <= -0.5 cm (more negative = deeper). SUPPORTED if both hold, else NOT SUPPORTED.",
+  "HB": "Success cost under extrapolation: success(S1)-success(C0) over x in LOW_FAR_OOD+LOW_NEAR_EDGE is negative in >=2 of 3 seed pairs AND mean <= -10 pp. SUPPORTED if both hold.",
+  "HC": "Boundary effect: D(x)=a_close(policy)-a_close(expert). For S1, mean D over LOW_NEAR_EDGE is lower than mean D over IN_SUPPORT in 3/3 seeds; for C0 in >=2/3 seeds. SUPPORTED per arm if so.",
+  "HD": "Cluster signature: among S1 post-pick failures at x<=0.37, >=50% satisfy the cluster definition (final x-x_tray<-2.5 cm, |y-y_tray|<1 cm) AND >=50% have palm contact. SUPPORTED if both hold.",
+  "HE": "In-support non-inferiority (descriptive): mean paired S1-C0 success over IN_SUPPORT with 95% CI; verdict NON-INFERIOR if lower bound >= -10 pp, COST EVIDENT if upper bound < 0, else INCONCLUSIVE (expected INCONCLUSIVE with n=3).",
+  "HF": "Upper boundary (undirected, exploratory by design): report the same metrics over HIGH_OOD; no prediction."
+ },
+ "acceptance": {
+  "AC1": "expert success >= 90% over x in [0.36,0.47] (otherwise the pose family is not a valid reference there; report per-x expert success)",
+  "AC2": "all 6 checkpoints complete 60/60 episodes",
+  "AC3": "no episode uses a forbidden seed; config sha256 unchanged",
+  "AC4": "replay vs live: label agreement reported; diverging episodes (box position error > 5 mm or label disagreement) listed separately and excluded only from replay-derived metrics",
+  "AC5": "wall-clock <= ~1.5 h for the policy episodes; otherwise stop and report"
+ },
+ "stop_rules": "stop and report if a worker crashes twice with identical args, if any step uses a forbidden seed, or if projected evaluation time exceeds 2.0 h",
+ "exclusions": "none pre-registered; no episode is dropped from live metrics"
+}

@@ -1,0 +1,24 @@
+# x-sweep (evaluation only) — pre-registration
+Registered 2026-10-30, **before any sweep episode was run**. Machine-readable, frozen: `outputs/xsweep/xsweep_config.json` (copy `assets/xsweep/xsweep_config.json`), sha256 **`6c59292d6d951673ab813fc50eba38612c01777534ccdad2a6f3c5797b1f596c`; `eval/xsweep_run.py` / `eval/xsweep_run.sh` abort if it changes. Code base commit `e5ca873`.
+Approved scope: evaluation only, 6 frozen checkpoints (C0/S1 × training seeds 0,1,2) + scripted expert, box x ∈ [0.34, 0.48] m. Not approved and not done: any training, new demos, new seeds, architecture/action‑contract change, test seeds 31–33, tuning after seeing results.
+
+## Why (motivation from H2/H3, exploratory)
+All 21 S1 "x ≈ −3.5 cm" cluster failures started at x ≈ 0.365 m, outside the training region (x ∈ [0.38, 0.45]); S1 grasps deeper than C0/expert and its grasp depth drifts with x. This experiment tests that on a controlled pose family.
+## Design
+- **x grid:** 0.34, 0.35, …, 0.48 (15 values). **Blocks (y, yaw fixed per block, all inside the training band):** B0 (0.10, 0.00), B1 (0.08, −0.10), B2 (0.12, +0.10), B3 (0.10, +0.20). 60 poses per checkpoint = 360 policy episodes + 60 expert episodes. Identical poses for every checkpoint and the expert (paired). Physics/lighting/cameras nominal; policy inference deterministic (no VAE), so no repeats.
+- **Strata:** LOW_FAR_OOD x ∈ {0.34, 0.35}; LOW_NEAR_EDGE {0.36, 0.37} (inside the old evaluation region, outside training); IN_SUPPORT {0.38 … 0.45}; HIGH_OOD {0.46, 0.47, 0.48}. Training‑region bounds from `policies/baseline.py`.
+- **Protocol:** unchanged `eval/evaluate.py` episode runner, labels, success criteria, horizon 200, action adapter, controller, preprocessing/normalization contract, checkpoint default `n_action_steps`; only the box‑pose source is an explicit table. Eval seed label 21 (poses are explicit; no seed 31–33 anywhere).
+- **Metrics:** live (from the evaluation rollout): task/pick/place success, final box–tray error, outcome. Replay (deterministic replay of the logged actions, as in H2/H3): a_close (box centre − TCP along the fingers at closing, TCP frame), slip = a_release − a_close, max box–TCP separation while carried, box–palm contact (> 0.01 N between close and release), finger force and contact position at hold, cluster flag (post‑pick failure with final x − x_tray < −2.5 cm and |y − y_tray| < 1 cm). Frames: world offsets and TCP‑relative offsets are reported under their own names.
+- **Uncertainty:** primary = seed‑level paired differences S1 − C0 (n = 3 pairs: same training seed id), two‑sided t 95 % CI (df 2) plus sign count, per stratum pooled over blocks and x of the stratum; secondary = Wilson 95 % per arm and x (n = 12: 3 seeds × 4 blocks, descriptive; episodes are clustered) and block‑resampling bootstrap within seed. With 3 pairs a CI can be very wide; no significance claim from n = 3 alone.
+## Hypotheses and decision rules (fixed now)
+- **HA** (grasp depth): over LOW_NEAR_EDGE, a_close(S1) < a_close(C0) in ≥ 2/3 seed pairs **and** mean paired difference ≤ −0.5 cm ⇒ SUPPORTED.
+- **HB** (success cost under extrapolation): over LOW_FAR_OOD ∪ LOW_NEAR_EDGE, success(S1) − success(C0) < 0 in ≥ 2/3 pairs **and** mean ≤ −10 pp ⇒ SUPPORTED.
+- **HC** (boundary effect): D(x) = a_close(policy) − a_close(expert); mean D over LOW_NEAR_EDGE < mean D over IN_SUPPORT in 3/3 seeds for S1 and ≥ 2/3 seeds for C0 ⇒ SUPPORTED per arm.
+- **HD** (cluster signature): among S1 post‑pick failures at x ≤ 0.37, ≥ 50 % are cluster‑flagged **and** ≥ 50 % have palm contact ⇒ SUPPORTED.
+- **HE** (in‑support, descriptive): mean paired S1 − C0 success over IN_SUPPORT with 95 % CI ⇒ NON‑INFERIOR if lower bound ≥ −10 pp; COST EVIDENT if upper bound < 0; else INCONCLUSIVE (expected).
+- **HF** (upper boundary): undirected, exploratory; same metrics over HIGH_OOD.
+Everything not listed above (per‑x curves, slip, final‑error distributions, per‑checkpoint tables, any mechanism interpretation) is **exploratory** and labelled as such in the report.
+## Acceptance criteria
+AC1 expert success ≥ 90 % over x ∈ [0.36, 0.47] (else the pose family is not a valid reference there; per‑x expert success is reported anyway). AC2 all 6 checkpoints complete 60/60 episodes. AC3 no forbidden seed, config sha unchanged. AC4 replay vs live label agreement reported; episodes with box‑position error > 5 mm or label disagreement are listed separately and excluded only from replay‑derived metrics. AC5 policy evaluation ≤ ≈ 1.5 h wall‑clock; stop and report if the projection exceeds 2.0 h or a worker crashes twice with identical arguments. No episode is excluded from live metrics.
+## Budget
+≈ 15 s per episode effective on this 4‑core VM (E0 evals: 130 episodes in ≈ 32 min) ⇒ 6 × 60 ≈ 89 min + replay ≈ 5 min + analysis. Queue order interleaves arms (C0/S1 seed 0, 1, 2) so partial results stay paired.

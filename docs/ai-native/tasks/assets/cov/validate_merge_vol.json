@@ -1,0 +1,53 @@
+{
+ "n_episodes": [
+  90,
+  90
+ ],
+ "n_frames": 12287,
+ "bad_length": 0,
+ "bad_state": 0,
+ "bad_action": 0,
+ "bad_timestamps": 0,
+ "bad_image_frames": 0,
+ "images_checked": false,
+ "first60_bit_identical_to_V1": true,
+ "split": {
+  "train": 81,
+  "val": 9,
+  "disjoint": true,
+  "covers": true,
+  "v1_preserved": true,
+  "new_val": [
+   75,
+   78,
+   83
+  ]
+ },
+ "stats_max_abs_diff_live_dims": {
+  "state_mean": 3.875718119772387e-06,
+  "state_std": 5.150567586320598e-07,
+  "action_mean": 2.279073977318191e-06,
+  "action_std": 1.2191965838015406e-06
+ },
+ "stats_idle_dims_float32_noise_info": {
+  "state_mean": 0.00023190737610656598,
+  "action_mean": 9.494115800356973e-05,
+  "state_std": 8.830098353107682e-05,
+  "action_std": 0.0024908946897616645
+ },
+ "n_train_frames": 11069,
+ "n_live_dims": [
+  8,
+  8
+ ],
+ "new_box_x_range": [
+  0.38026536067466093,
+  0.4460795436187082
+ ],
+ "new_box_yaw_range": [
+  -0.19599962361364112,
+  0.17043514636038387
+ ],
+ "new_n_kept": 30,
+ "problems": []
+}

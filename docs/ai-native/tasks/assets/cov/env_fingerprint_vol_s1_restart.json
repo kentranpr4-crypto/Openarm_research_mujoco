@@ -1,0 +1,15 @@
+{
+ "t": "2026-10-31T03:51:50Z",
+ "purpose": "environment fingerprint before the single approved restart of cov_vol_s1_seed3 (approved once by user)",
+ "nproc": "4",
+ "kernel": "6.18.44-fc-v185",
+ "uptime": "03:51:50 up 0 min,  0 user,  load average: 0.27, 0.08, 0.03",
+ "cpu_model": "model name\t: Intel(R) Xeon(R) Processor @ 2.80GHz",
+ "mem": "total        used        free      shared  buff/cache   available\nMem:           16091         525       15530          15         251       15565",
+ "load_avg": "0.27 0.08 0.03 4/111 200",
+ "top_processes": "%CPU %MEM COMMAND \n204 0.3 python3 -\n21.0 1.7 /opt/claude-code/bin/claude --preload\n3.1 0.0 /process_api --firecracker-init\n1.6 0.2 /usr/local/bin/environment-manager task-run\n1.0 0.0 [migration/2]",
+ "python_procs": "3",
+ "threads": "act_train --threads 3, 1 dataloader worker",
+ "matmul_probe_s": 0.326,
+ "note": "VM freshly booted (uptime 0 min), no other workload"
+}

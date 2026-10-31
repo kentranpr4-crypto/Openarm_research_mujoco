@@ -1,0 +1,18 @@
+{
+ "t": "2026-10-30T08:45:24Z",
+ "purpose": "environment fingerprint before the single approved restart of cov_ext_s1_seed3",
+ "nproc": "4",
+ "kernel": "6.18.44-fc-v185",
+ "uptime": "08:45:24 up  6:45,  0 user,  load average: 0.00, 0.47, 2.05",
+ "cpu_model": "model name\t: Intel(R) Xeon(R) Processor @ 2.80GHz",
+ "mem": "total        used        free      shared  buff/cache   available\nMem:           16091         615       15554          15         186       15475",
+ "load_avg": "0.00 0.47 2.05 1/105 6637",
+ "top_processes": "%CPU %MEM COMMAND \n55.5 0.0 python3 -\n0.5 2.0 /opt/claude-code/bin/claude --preload\n0.0 0.0 /process_api --firecracker-init\n0.0 0.2 /usr/local/bin/environment-manager task-run\n0.0 0.0 [rcu_preempt]",
+ "python_procs": "3",
+ "torch_threads_flag": "--threads 3 (policies/act_train.py), dataloader workers 1",
+ "env": {
+  "OMP": null,
+  "MKL": null
+ },
+ "matmul_probe_s": 0.232
+}

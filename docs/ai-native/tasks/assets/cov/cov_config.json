@@ -1,0 +1,209 @@
+{
+ "name": "training-coverage experiment (x support extension) with data-volume control",
+ "registered": "2026-10-30, before any new demo was collected or any new model trained",
+ "code_commit": "a3c18700f6afe8b90be38492286b87259f7fe814",
+ "question": "Does extending expert demonstrations to box x in [0.34,0.38) m explain the boundary grasp failure (too-deep grasp -> box seated against palm -> 3-5 cm placement offset) of frozen C0/S1, and does it change the C0/S1 trade-off?",
+ "scope": {
+  "architecture": "ACT unchanged (ResNet18 scratch, dim 256, 2 enc layers, chunk 20, exec 20, no VAE)",
+  "action_representation": "unchanged 16-D absolute joint targets",
+  "controller_adapter_upstream": "unchanged",
+  "task_success_thresholds": "unchanged",
+  "normalization": "train-only statistics computed per dataset from its TRAIN episodes; floors unchanged (S1: state 0.02 rad, gripper 0.002 m; action floor off; C0: no floor); hyper-parameters unchanged",
+  "baselines": "frozen C0/S1 seeds 0,1,2 (checkpoints and x-sweep results untouched)",
+  "forbidden_seeds": [
+   31,
+   32,
+   33
+  ],
+  "world_model": "not part of this experiment",
+  "no_deletion": "existing datasets, checkpoints and logs are never modified"
+ },
+ "data": {
+  "original": "outputs/datasets/demo_train_clipped (60 demos, train region x [0.38,0.45], y [0.07,0.13], yaw [-0.20,0.20], base seed 10, light jitter 0.15)",
+  "new_extension": {
+   "name": "demo_ext",
+   "n": 30,
+   "base_seed": 40,
+   "start_index": 100,
+   "region": {
+    "x": [
+     0.34,
+     0.38
+    ],
+    "y": [
+     0.07,
+     0.13
+    ],
+    "yaw": [
+     -0.2,
+     0.2
+    ]
+   },
+   "light_jitter": 0.15,
+   "note": "x uniform in [0.34,0.38) (upper end open); same expert, cameras (front, wrist_left, wrist_right), 120x160, 20 Hz, fast render profile; only demos with plan_ok and task_success are kept"
+  },
+  "new_volume_control": {
+   "name": "demo_vol",
+   "n": 30,
+   "base_seed": 41,
+   "start_index": 200,
+   "region": {
+    "x": [
+     0.38,
+     0.45
+    ],
+    "y": [
+     0.07,
+     0.13
+    ],
+    "yaw": [
+     -0.2,
+     0.2
+    ]
+   },
+   "light_jitter": 0.15,
+   "note": "same procedure and count as the extension but drawn from the ORIGINAL training region: adds data volume without adding coverage"
+  },
+  "merged": {
+   "EXT": "60 original + demo_ext (original episodes first, identical order/content)",
+   "VOL": "60 original + demo_vol"
+  },
+  "split": {
+   "rule": "original 60 keep their V1 split (54 train / 6 val, outputs/lerobot/pickplace_v1/openarm_splits.json); of each 30 new demos 27 go to train and 3 to val (val chosen with numpy default_rng(0) over the sorted new episode indices)",
+   "note": "the 3 new val demos only monitor validation loss; no test seeds involved"
+  },
+  "sizing_rationale": "original density 60 demos over a 0.07 m x-range ~ 0.86/cm; 30 demos over 0.04 m = 0.75/cm (similar). If fewer than 30 extension demos succeed, VOL is sized to the same kept count."
+ },
+ "branches": {
+  "ext_c0": "EXT data, C0 normalization",
+  "ext_s1": "EXT data, S1 normalization",
+  "vol_c0": "VOL data, C0 normalization",
+  "vol_s1": "VOL data, S1 normalization"
+ },
+ "training": {
+  "seeds": {
+   "ext_c0": [
+    3,
+    4
+   ],
+   "ext_s1": [
+    3,
+    4
+   ],
+   "vol_c0": [
+    3
+   ],
+   "vol_s1": [
+    3
+   ]
+  },
+  "seed_note": "3 and 4 are new independent seeds (baselines used 0,1,2); EXT arms are paired by seed id (same init and batch order for the same dataset); VOL has one seed per arm",
+  "steps": 5400,
+  "batch": 16,
+  "lr": 0.0001,
+  "workers": 1,
+  "threads": 3,
+  "val_every": 250,
+  "save_every": 1000,
+  "cams": [
+   "front",
+   "wrist_left"
+  ],
+  "stats_source": "train_only",
+  "s1_flags": "--state-std-floor 0.02 --gripper-std-floor 0.002",
+  "compute_budget": "identical 5400 steps for every branch (fixed compute); steps per demo therefore fall by 1/1.5 for the 90-demo datasets - a known confound shared by EXT and VOL, separated from coverage only by the VOL control",
+  "order": [
+   "ext_c0_seed3",
+   "ext_s1_seed3",
+   "vol_c0_seed3",
+   "vol_s1_seed3",
+   "ext_c0_seed4",
+   "ext_s1_seed4"
+  ],
+  "guard": "average of the first 200 steps <= 1.10 s/step else stop and report"
+ },
+ "evaluation": {
+  "xsweep": {
+   "config": "outputs/xsweep/xsweep_config.json",
+   "sha256": "6c59292d6d951673ab813fc50eba38612c01777534ccdad2a6f3c5797b1f596c",
+   "note": "the existing frozen x-sweep is rerun verbatim on each new checkpoint (60 poses: 15 x x 4 blocks)"
+  },
+  "shortcut": {
+   "set": "NOM seed 21 ids 0-19 (training region, as in E0): unperturbed, right_mean, right_jitter_small",
+   "SI": "success perturbed / success unperturbed on the same ids"
+  },
+  "open_loop_val": "MAE on the 6 ORIGINAL validation episodes of pickplace_v1 (comparable with baselines)",
+  "latency": "per-step and per-query inference latency from the evaluation logs (cpu, 1 thread); hardware-noise caveat",
+  "replay": "eval/xsweep_replay.py on every sweep rollout for offsets and contacts",
+  "metrics": [
+   "task success by x and stratum",
+   "grasp offset a_close (TCP frame) and deviation from expert",
+   "box slip a_release-a_close",
+   "final placement error",
+   "palm and finger contact",
+   "right-arm shortcut sensitivity (SI)",
+   "latency"
+  ],
+  "strata": {
+   "LOW_FAR_OOD": [
+    0.34,
+    0.35
+   ],
+   "LOW_NEAR_EDGE": [
+    0.36,
+    0.37
+   ],
+   "IN_SUPPORT_ORIG": [
+    0.38,
+    0.39,
+    0.4,
+    0.41,
+    0.42,
+    0.43,
+    0.44,
+    0.45
+   ],
+   "HIGH_OOD": [
+    0.46,
+    0.47,
+    0.48
+   ]
+  },
+  "note": "for the EXT branches x in [0.34,0.38) is now IN training support; strata keep their old names for comparability"
+ },
+ "uncertainty": {
+  "across_training_seeds": "per-seed values, range and sign consistency (EXT n=2 per arm, baseline n=3, VOL n=1); t-intervals with df<=2 are shown only for reference",
+  "across_pose_blocks": "block-resampling bootstrap within seed and per-block tables (4 blocks); the block factor is crossed with x",
+  "caveat": "EXT/VOL vs baseline comparisons are between independent training seeds (not paired)"
+ },
+ "hypotheses": {
+  "C1": "Coverage improves boundary success: for BOTH arms, mean EXT success over x in [0.34,0.37] >= baseline same-arm mean + 20 pp AND >= 75 %, AND each EXT seed >= baseline mean + 10 pp.",
+  "C2": "Volume control: for BOTH arms the VOL (seed 3) success over x in [0.34,0.37] <= baseline same-arm mean + 10 pp (=> improvement is attributable to coverage, not data volume). If VOL >= baseline + 20 pp the volume confound is evident.",
+  "C3": "Grasp position: for BOTH arms mean |a_close - a_close(expert)| over x in [0.34,0.37] <= 1.0 cm in every EXT seed AND improved by >= 1.5 cm vs the baseline same-arm mean deviation.",
+  "C4": "Trade-off: S1 - C0 over x in [0.34,0.37], paired by EXT seed (3,4): mean >= -10 pp => the S1 boundary deficit is explained by coverage; also report S1-C0 over x in [0.38,0.45] (NON-INFERIOR if the lower t-bound >= -10 pp, which is unreachable with df=1; verdict then INCONCLUSIVE unless COST EVIDENT).",
+  "C5": "No in-support regression: for BOTH arms EXT success over x in [0.38,0.45] >= baseline same-arm mean - 10 pp.",
+  "C6": "Shortcut sensitivity retained: S1-EXT SI >= 0.90 on right_mean and jitter_small in every seed; C0-EXT SI <= 0.25 in every seed.",
+  "C7": "Coverage effect is local: for BOTH arms |EXT - baseline same-arm mean| <= 15 pp over x in [0.46,0.48].",
+  "C8": "Latency (descriptive): median per-query latency of new checkpoints within +-25 % of the frozen baselines.",
+  "overall_rule": "COVERAGE EXPLAINS the boundary grasp failure if C1 and C2 and C3 hold; PARTIAL if C1 holds but C2 or C3 fails (volume confound or only partial grasp-position recovery); NOT EXPLAINED if C1 fails. C4-C8 qualify the conclusion and the S1/C0 trade-off. All other analyses are exploratory."
+ },
+ "acceptance": {
+  "AC1": "new demos: >= 27/30 expert successes (plan_ok and task_success) for both EXT and VOL; kept counts reported",
+  "AC2": "dataset synchronization validation passes (data/validate_dataset.py on the new raw sets; data/validate_merge.py: frame counts, timestamps, state/action alignment, first 60 episodes bit-identical to the V1 LeRobot dataset, split manifest, train-only stats recomputed)",
+  "AC3": "unit tests (policies/test_norm_contract.py) pass and a 200-step smoke training on the EXT dataset for both arms completes with norm contracts verified (floors only on live idle right-arm dims for S1)",
+  "AC4": "all 6 training runs reach 5400 steps with the speed guard satisfied",
+  "AC5": "every checkpoint completes the 60-pose sweep, the 3 x 20 shortcut episodes and the open-loop check",
+  "AC6": "no forbidden seed; this config's sha256 unchanged; baselines untouched (hashes re-checked)"
+ },
+ "budget": {
+  "estimate_hours": {
+   "data_collection": 0.5,
+   "validation_smoke": 0.5,
+   "training": 7.1,
+   "evaluation": 3.7,
+   "analysis": 0.5,
+   "total": 12.3
+  },
+  "stop_rules": "stop and report if the first-200-step speed guard trips, if projected total > 14 h, if a run crashes twice with identical arguments, or if a forbidden seed appears"
+ }
+}

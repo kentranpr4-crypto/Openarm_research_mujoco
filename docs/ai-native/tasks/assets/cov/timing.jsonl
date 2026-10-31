@@ -1,0 +1,15 @@
+{"event":"train_start","run":"cov_ext_c0_seed3","t":1793340607}
+{"event":"train_end","run":"cov_ext_c0_seed3","t":1793346446}
+{"event":"eval_start","run":"cov_ext_c0_seed3","t":1793346446}
+{"event":"eval_end","run":"cov_ext_c0_seed3","t":1793349027}
+{"event":"train_start","run":"cov_ext_s1_seed3","t":1793349027}
+{"event":"train_start","run":"cov_ext_s1_seed3","t":1793349925}
+{"event":"train_end","run":"cov_ext_s1_seed3","t":1793355838}
+{"event":"eval_start","run":"cov_ext_s1_seed3","t":1793355838}
+{"event":"eval_end","run":"cov_ext_s1_seed3","t":1793358307}
+{"event":"train_start","run":"cov_vol_c0_seed3","t":1793358307}
+{"event":"train_end","run":"cov_vol_c0_seed3","t":1793364276}
+{"event":"eval_start","run":"cov_vol_c0_seed3","t":1793364276}
+{"event":"eval_end","run":"cov_vol_c0_seed3","t":1793366887}
+{"event":"train_start","run":"cov_vol_s1_seed3","t":1793366887}
+{"event":"train_start","run":"cov_vol_s1_seed3","t":1793418710}

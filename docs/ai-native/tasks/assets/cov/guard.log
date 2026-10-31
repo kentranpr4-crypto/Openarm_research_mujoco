@@ -1,0 +1,9 @@
+cov_ext_c0_seed3 first-200-steps average: 1.029569786787033 s/step
+cov_ext_s1_seed3 first-200-steps average: 1.2260128891468047 s/step
+RUNTIME GUARD TRIPPED (1.2260128891468047 s/step)
+cov_ext_s1_seed3 first-200-steps average: 1.0427545940876006 s/step
+cov_vol_c0_seed3 first-200-steps average: 1.081682481765747 s/step
+cov_vol_s1_seed3 first-200-steps average: 1.1119809865951538 s/step
+RUNTIME GUARD TRIPPED (1.1119809865951538 s/step)
+cov_vol_s1_seed3 first-200-steps average: 1.134825404882431 s/step
+RUNTIME GUARD TRIPPED (1.134825404882431 s/step)

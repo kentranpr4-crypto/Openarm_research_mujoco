@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent; sys.path.insert(0, str(ROOT / "ev
 import wm3_gates as V, geometry_v2 as Gm
 V2 = V.CONFIG; wrap = Gm.wrap
 CONFIG = dict(
-    version="Gate v3 (FINAL DRAFT for review, prospective)", status="DRAFT: specification + synthetic-fixture tests only; NOT FROZEN; NOT applied to I-1 or development; no training started",
+    version="Gate v3", protocol_version="gate-v3.0", status="PROSPECTIVE gate (protocol gate-v3.0): applies only to evaluations designed and frozen after the freeze; NOT applied to the independent evaluation I-1 nor to any development verdict; historical verdicts are unchanged",
     inherits=dict(gates_v2_config_sha256="f6c323914a99b4bc884ffc88c4c538615ad3a1ba10649fd95e38282acbaa0627", unchanged=["G0", "G1", "G2", "G4", "G5", "G6", "aggregation", "windows", "floors", "baseline_pool", "contact_scales"], note="v3 evaluates the inherited gates with the v2 functions in eval/wm3_gates.py"),
     not_applied_to=["independent evaluation I-1 (2026-11-01; G3 FAIL stays FAIL; yaw 0.0515 vs 0.0146 rad stays as reported)", "all development results"],
     min_sample=V2["min_sample"], aggregation=V2["aggregation"],
@@ -25,7 +25,7 @@ CONFIG = dict(
              "A target whose pooled at-risk sample fails the v2 sufficiency rule is NOT_EVALUABLE.",
         reference="outcome_only", branch_threshold_auroc_ref=0.90, margin_branch=dict(auroc_min=0.80, ci_lower_min=0.70, margin_min=0.05), ceiling_branch=dict(auroc_min=0.98, brier_skill_min=0.50),
         hard_subset=dict(ref_prob_range=[0.2, 0.8], auroc_min=0.90, min_prevalence=0.05, support="same as g3_* in min_sample, applied to the hard subset"),
-        rare_label=dict(prevalence_below=0.05, brier_skill_min=0.50, operating_point=dict(tpr_min=0.70, eval_fpr_max=0.05, calibration_fpr=0.04, calibration_split="val", calibration_min_negative_windows=500,
+        rare_label=dict(prevalence_below=0.05, brier_skill_min=0.50, operating_point=dict(tpr_min=0.70, eval_fpr_max=0.05, calibration_fpr=0.04, calibration_split="val", calibration_quantile=0.96, calibration_min_negative_windows=500,
                         threshold_rule="tau = (1 - calibration_fpr) quantile of the MODEL's scores on the NEGATIVE at-risk windows of a CALIBRATION split (the validation split); evaluation labels are never used to choose tau; tau is then fixed and the evaluation set reports TPR(tau) and FPR(tau); gate: TPR >= tpr_min AND FPR <= eval_fpr_max",
                         rationale="a contact/failure detector must catch >= 70 % of events with <= 5 % false alarms; calibrating at 4 % leaves sampling/shift margin below the 5 % limit; first proposal, not tuned on any result")),
         brier_skill=dict(definition="BSS = 1 - B_model / max(B_ref, floor); B_* = macro mean over initial-state groups of the per-group mean squared error (p - y)^2 on the at-risk windows", floor=1e-3,
@@ -44,11 +44,18 @@ CONFIG = dict(
         static_input_subset=dict(rule="S_in (INPUT-ONLY): box speed <= 0.005 m/s in all history rows AND no finger contact and palm force <= 0.01 N in all history rows AND the candidate future gripper command stays open (>= 0.028 m); gated on heading-valid windows (regime stable/rotating)", speed_max_mps=0.005, palm_force_max_N=0.01, gripper_open_min_m=0.028,
                                  abs_max_rad=0.01, diff_vs_persistence_upper_max_rad=0.01, relative=dict(max_ratio=3.0, denominator_floor_rad=0.003, floor_rationale="0.003 rad is the true-static tolerance (S_gt) and the numerical-noise scale; below it the persistence error is not a meaningful denominator"),
                                  diagnostic_subset="S_gt (true geodesic rotation < 0.003 rad) is reported as a DIAGNOSTIC subset (uses the future truth)"),
-        orientation_component=dict(regimes=["singular", "tumbling"], metric="box-symmetric quaternion geodesic distance at K=20 (gating; D2 = identity and 180-degree rotations about the three body axes, verified valid for the blue box: single uniform collision cuboid, uniform colour, task success independent of orientation) plus the FULL (non-symmetric) geodesic distance reported separately (not gating)", ratio_max=1.10, ratio_upper_bound_max=1.25),
+        sensitivity_diagnostics=dict(tumble_step_geodesic_rad=[0.20, 0.50], note="reported counts and orientation ratios at these alternative tumbling thresholds; they never replace the primary 0.30 rad threshold and never change a verdict"), orientation_component=dict(regimes=["singular", "tumbling"], metric="box-symmetric quaternion geodesic distance at K=20 (gating; D2 = identity and 180-degree rotations about the three body axes, verified valid for the blue box: single uniform collision cuboid, uniform colour, task success independent of orientation) plus the FULL (non-symmetric) geodesic distance reported separately (not gating)", ratio_max=1.10, ratio_upper_bound_max=1.25),
         tilt=dict(reported_only=True, metric="|sym_tilt_hat - sym_tilt| in radians, sym_tilt = min(tilt, pi - tilt), tilt = arccos(R22) from quaternions (unit-safe)", unit_check="if a stored tilt channel is supplied it must match arccos(R22) within 1e-3 rad, else the stored-channel metric is NOT_EVALUABLE (data contract v1 mixed radians and degrees)"),
         requires_contract="T[sp]['Q_t'], T[sp]['Y_rv'], preds[m][sp]['Y_rv']"))
+CFG_PATH = ROOT / "outputs/gates_v3/gates_v3_config.json"
 def config_bytes(): return json.dumps(CONFIG, indent=1, sort_keys=True).encode()
 def config_sha(): return hashlib.sha256(config_bytes()).hexdigest()
+def load_config(expect=None):
+    if not CFG_PATH.exists(): raise SystemExit("gates v3 config not frozen")
+    b = CFG_PATH.read_bytes(); h = hashlib.sha256(b).hexdigest()
+    if expect and h != expect: raise SystemExit(f"gates v3 config changed: {h} != {expect}")
+    if h != config_sha(): raise SystemExit("gates_v3_config.json differs from CONFIG in wm4_gates.py")
+    return json.loads(b)
 def comp(name, passed=None, evaluable=True, applicable=True, **kw): return dict(name=name, passed=bool(passed) if passed is not None else False, evaluable=bool(evaluable), applicable=bool(applicable), **kw)
 def verdict(components):
     c = [x for x in components if x.get("applicable", True)]; ev = [x for x in c if x["evaluable"]]
@@ -65,11 +72,11 @@ def _bs_auroc_ci(y, p, g, n, seed=0):
 def brier_macro(y, p, g): return V.group_means((p - y) ** 2, g)[1]
 def brier_skill(y, p, po, g, floor):
     bm, br = brier_macro(y, p, g), brier_macro(y, po, g); den = max(float(br.mean()), floor); return 1 - float(bm.mean()) / den, dict(B_model=float(bm.mean()), B_ref=float(br.mean()), denominator=den, floor_used=bool(br.mean() < floor)), bm, br
-def calibrate_threshold(y_cal, p_cal, fpr): return float(np.quantile(p_cal[y_cal == 0], 1 - fpr))
+def calibrate_threshold(y_cal, p_cal, fpr): return float(np.quantile(p_cal[y_cal == 0], 1 - fpr))                          # quantile 0.96 of the validation negatives for fpr = 0.04
 def tpr_at_fpr(y, p, fpr):
     neg = p[y == 0]; thr = np.quantile(neg, 1 - fpr); sel = p > thr; return float(sel[y == 1].mean()), float(y[sel].mean()) if sel.any() else float("nan"), float(thr)
 def gate_G3_v3(cfg, preds, T, groups, masks, model="wm3b", cal=None):
-    """cal (needed only for RARE labels): dict(preds=, T=, groups=, masks=, sets=[...optional]) holding the CALIBRATION split(s) (validation); the operating threshold is fixed from it, never from the evaluation labels."""
+    """cal (needed only for RARE labels): dict(preds=, T=, groups=, masks=, sets=["val"], split_name="val") holding ONLY the validation split; the operating threshold is fixed from it, never from the evaluation labels."""
     c = cfg["G3"]; comps, detail = [], {}
     for tgt in c["primary"]:
         y, p, po, g = V._gather(preds[model], preds[c["reference"]], T, groups, masks, tgt["label"], tgt["sets"]); ok, suff = V._suff(cfg, y, g); key = f"{tgt['label']}/{'+'.join(tgt['sets'])}"; d = dict(sufficiency=suff, evaluable=ok)
@@ -85,12 +92,12 @@ def gate_G3_v3(cfg, preds, T, groups, masks, model="wm3b", cal=None):
             r = c["rare_label"]
             if branch == "margin": comps.append(comp(f"{key}/rare:brier_skill>={r['brier_skill_min']}", bss >= r["brier_skill_min"], value=bss))
             op = r["operating_point"]; n1, n2 = f"{key}/rare:tpr@tau>={op['tpr_min']}", f"{key}/rare:fpr@tau<={op['eval_fpr_max']}"; okc = False
-            if cal is not None:
-                yc, pc, _, gc = V._gather(cal["preds"][model], cal["preds"][c["reference"]], cal["T"], cal["groups"], cal["masks"], tgt["label"], cal.get("sets") or tgt["sets"]); okc = int((yc == 0).sum()) >= op["calibration_min_negative_windows"] and int((yc == 1).sum()) >= 1
+            if cal is not None and cal.get("split_name") == op["calibration_split"] and list(cal.get("sets") or []) == [op["calibration_split"]]:
+                yc, pc, _, gc = V._gather(cal["preds"][model], cal["preds"][c["reference"]], cal["T"], cal["groups"], cal["masks"], tgt["label"], [op["calibration_split"]]); okc = int((yc == 0).sum()) >= op["calibration_min_negative_windows"] and int((yc == 1).sum()) >= 1
             if okc:
                 tau = calibrate_threshold(yc, pc, op["calibration_fpr"]); tpr = float((p[y == 1] > tau).mean()); fpr = float((p[y == 0] > tau).mean()); prec = float(y[p > tau].mean()) if (p > tau).any() else float("nan"); d["operating_point"] = dict(tau=tau, calibration_negatives=int((yc == 0).sum()), calibration_positives=int((yc == 1).sum()), tpr=tpr, fpr=fpr, precision=prec)
                 comps += [comp(n1, tpr >= op["tpr_min"], value=tpr), comp(n2, fpr <= op["eval_fpr_max"], value=fpr)]
-            else: d["operating_point"] = dict(evaluable=False, reason="no calibration split supplied or fewer than %d negative calibration windows" % op["calibration_min_negative_windows"]); comps += [comp(n1, evaluable=False), comp(n2, evaluable=False)]
+            else: d["operating_point"] = dict(evaluable=False, reason="no calibration split named %r supplied (calibration must use the validation split only) or fewer than %d negative calibration windows" % (op["calibration_split"], op["calibration_min_negative_windows"])); comps += [comp(n1, evaluable=False), comp(n2, evaluable=False)]
             comps.append(comp(f"{key}/hard_subset", applicable=False, evaluable=False, reason=f"NOT_APPLICABLE: rare label (prevalence {prev:.3f} < {c['hard_subset']['min_prevalence']})")); d["hard_subset"] = dict(applicable=False, reason="rare label")
         else:
             lo, hi = c["hard_subset"]["ref_prob_range"]; hm = (po >= lo) & (po <= hi); hok, hsuff = V._suff(cfg, y[hm], g[hm]) if hm.any() else (False, dict(pos_groups=0, neg_groups=0, pos_windows=0, neg_windows=0)); d["hard_subset"] = dict(applicable=True, n_windows=int(hm.sum()), sufficiency=hsuff, evaluable=hok)
@@ -163,6 +170,12 @@ def gate_G7(cfg, preds, T, groups, active, model="wm3b", sets=("test_id", "test_
     for rn in ("stable", "rotating", "singular", "tumbling"):
         mk = {sp: active[sp] & RG[sp][rn] for sp in sets}; nw, ng = n_(mk); rep[rn] = dict(n_windows=nw, n_groups=ng)
         if nw: rep[rn].update(yaw_E_K20=({n: float(per_group(n, K, mk, "yaw")[1].mean()) for n in names if has_yaw(n) and len(per_group(n, K, mk, "yaw")[1])} if rn in ("stable", "rotating") else None), geodesic_sym_E_K20={n: float(per_group(n, K, mk, "geo")[1].mean()) for n in names if has_rv(n) and len(per_group(n, K, mk, "geo")[1])}, geodesic_full_E_K20={n: float(per_group(n, K, mk, "geo_full")[1].mean()) for n in names if has_rv(n) and len(per_group(n, K, mk, "geo_full")[1])})
+    sens = {}
+    for thr in c["sensitivity_diagnostics"]["tumble_step_geodesic_rad"]:
+        cfg_a = json.loads(json.dumps(cfg)); cfg_a["G7"]["regimes"]["tumble_step_geodesic_rad"] = thr; RGa = {sp: regimes(T[sp]["Q_t"], T[sp]["Y_rv"], cfg_a)[0] for sp in sets}
+        sta = {sp: active[sp] & (RGa[sp]["singular"] | RGa[sp]["tumbling"]) for sp in sets}; ca, da = ratio_comps("orientation", sta, "geo", [b for b in c["baselines"] if has_rv(b)], has_rv(model))
+        sens[str(thr)] = dict(windows={rn: int(sum((active[sp] & RGa[sp][rn]).sum() for sp in sets)) for rn in ("stable", "rotating", "tumbling", "singular")}, orientation=dict(ratio=da.get("ratio"), ratio_upper=(da.get("ratio_ci") or [None, None])[1], evaluable=da.get("evaluable", True), n_windows=da.get("n_windows")))
+    detail["tumbling_threshold_sensitivity_not_gating"] = sens
     detail["regimes_reported"] = rep; detail["reported_horizons_yaw_heading_valid"] = {str(k): {n: float(per_group(n, k, act_hv, "yaw")[1].mean()) for n in names if has_yaw(n) and len(per_group(n, k, act_hv, "yaw")[1])} for k in c["horizons_reported"]}
     sgt = {sp: static_input_mask(T[sp], cfg) & (RG[sp]["stable"] | RG[sp]["rotating"]) & (Gm.geodesic_sym(G_[sp]["true"][:, 0], G_[sp]["true"][:, -1]) < 0.003) for sp in sets}; detail["diagnostic_S_gt"] = dict(uses_future_truth=True, n_windows=n_(sgt)[0], yaw_E_K20={n: float(per_group(n, K, sgt)[1].mean()) for n in names if has_yaw(n) and n_(sgt)[0]})
     detail["tilt_reported_only"] = {"metric": c["tilt"]["metric"], "E_K20_rad": {n: float(per_group(n, K, {sp: active[sp] for sp in sets}, "tilt")[1].mean()) for n in names if has_rv(n) and len(per_group(n, K, {sp: active[sp] for sp in sets}, "tilt")[1])}}
@@ -170,6 +183,7 @@ def gate_G7(cfg, preds, T, groups, active, model="wm3b", sets=("test_id", "test_
     if stored: ok_u, dmax = tilt_unit_check(np.concatenate([T[sp]["tilt_stored"] for sp in stored]), np.concatenate([G_[sp]["true"][:, 0] for sp in stored])); detail["tilt_unit_check"] = dict(ok=ok_u, max_abs_diff_rad=dmax, stored_channel_metric="evaluable" if ok_u else "NOT_EVALUABLE (unit/definition mismatch)")
     return dict(verdict=verdict(comps), conditions=comps, detail=detail)
 if __name__ == "__main__":
+    if "--freeze" in sys.argv: sys.exit("use eval/freeze_gate_v3.py (it runs the pre-freeze checks)")
     if "--draft" in sys.argv:
         out = ROOT / "outputs/gates_v3"; out.mkdir(parents=True, exist_ok=True); p = out / "gates_v3_config.DRAFT.json"; p.write_bytes(config_bytes()); print("DRAFT written (not frozen):", p, "sha256", config_sha())
     else: print("sha256 of current DRAFT CONFIG:", config_sha())

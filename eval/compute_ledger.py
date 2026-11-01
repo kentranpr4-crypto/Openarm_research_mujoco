@@ -16,8 +16,10 @@ for name, p in (("v1.1 build", "outputs/wm2_v1_1/dataset/dataset_manifest.json")
 for name, p in (("v1.1 integrity", "outputs/wm2_v1_1/integrity.json"), ("v2 integrity", "outputs/wm2_v2/integrity.json")):
     try: man[name] = json.loads((ROOT / p).read_text())["cpu_seconds"] / 3600
     except Exception: man[name] = None
-try: man["E1-lite"] = json.loads((ROOT / "outputs/e1_lite/e1_lite_results.json").read_text())["budget"]["cpu_hours"]
-except Exception: man["E1-lite"] = None
+for name, p_ in (("E1-lite", "outputs/e1_lite/e1_lite_results.json"), ("E1-lite-B", "outputs/e1_lite_b/results.json"), ("E1-lite-C (final run)", "outputs/e1_lite_c/results.json")):
+    try: man[name] = json.loads((ROOT / p_).read_text())["budget"]["cpu_hours"]
+    except Exception: man[name] = None
+man["E1-lite-C crashed first attempt (upper bound, wall 51 s x 3 threads)"] = 160 / 3600
 tot_lo, tot_hi = lo + meas, hi + meas
 res = dict(convention="22 CPU-h cumulative from WM-2 onwards incl. training, evaluation, dataset preparation, simulation; excludes historical ACT research", pre_boot_estimate_cpu_h=dict(lower=lo, upper=hi, items=dict(training_and_eval_wall_s=training_wall, simulation_cpu_s=sim_pre, dataset_prep_s=build_pre)),
            measured_since_vm_boot_cpu_h=meas, measured_note="cgroup cpuacct.usage of the sandbox since boot (03:36 UTC Nov 1): includes I-1 collection, I-1 predictions/evaluation, yaw audits, Gate v3 tests, replay validation, v1.1 build, v2 build, integrity, E1-lite as far as they have run; also tool overheads",

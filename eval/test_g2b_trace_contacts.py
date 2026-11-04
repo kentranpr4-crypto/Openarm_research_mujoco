@@ -21,7 +21,7 @@ def gate(n, name):
     return deco
 env = P.make_env(()); m = env.m; ex = ScriptedExpert(m, control_hz=20); lim = SafetyLimits.from_model(m); obs = P.LiveObserver(env); POSE = (0.40, 0.10, 0.0)
 pl = ex.plan(POSE[:2], POSE[2]); names = np.array(pl["phase_names"])[np.array(pl["phase"])]; T = int(np.where(names == "transport")[0][0]) + 8
-env.set_perturbation(); env.reset(POSE[:2], POSE[2]); prev = env.prev_ctrl.copy(); rec = TR.TraceRecorder(m, dict(pose=POSE, note="plumbing run, not a result", t0=0)); hist = []; box_z0 = float(env.d.xpos[rec.cmap.box_body][2])
+env.set_perturbation(); env.reset(POSE[:2], POSE[2]); prev = env.prev_ctrl.copy(); rec = TR.TraceRecorder(m, dict(pose=POSE, note="plumbing run, not a result", t0=0), refresh=False); hist = []; box_z0 = float(env.d.xpos[rec.cmap.box_body][2])
 for t in range(T):
     c, _, _ = lim.clip_and_slew(pl["ctrl"][t], prev, 0.05); rec.record(env.d, c[7], c); b_, c_ = obs.row(); hist.append((b_.copy(), c_.copy())); P.lean_step(env, c, False); prev = c
 rec.record_final(env.d); A = rec.arrays(); cm = rec.cmap; mass = float(m.body_mass[cm.box_body]); gz = float(m.opt.gravity[2]); i_hold = np.where(names[:T] == "grip_hold")[0]

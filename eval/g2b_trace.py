@@ -38,10 +38,16 @@ class ContactMap:
             else: r["nO"] += 1; r["Fo"] += fn
         return r
 class TraceRecorder:
-    def __init__(self, m, meta):
-        self.cmap = ContactMap(m); self.m = m; self.rows = {k: [] for k in FIELDS}; self.meta = dict(meta); self._last = None
+    def __init__(self, m, meta, refresh=True):
+        """refresh=True (r2 default): contacts/forces/xpos/xmat are read from a SCRATCH copy of the data after mj_forward, i.e. they belong to the same instant as qpos/qvel (end of the control step); the live MjData is never modified (mj_forward on the live data could change the solver warm-start).  refresh=False reads the raw post-mj_step arrays (contacts/xpos are from the start of the last substep, 1 ms older than qpos)."""
+        import mujoco
+        self.cmap = ContactMap(m); self.m = m; self.rows = {k: [] for k in FIELDS}; self.meta = dict(meta); self._last = None; self.refresh = bool(refresh); self._scr = mujoco.MjData(m) if refresh else None
     def record(self, d, g_exec, ctrl_exec):
-        c = self.cmap; r = c.read_contacts(d); tcp = d.xpos[c.tcp].copy(); R = d.xmat[c.tcp].reshape(3, 3).copy(); b = d.xpos[c.box_body].copy(); row = dict(g_exec=float(g_exec), g_meas=float(d.qpos[c.finger_qadr]), box_pos=b, box_quat=d.xquat[c.box_body].copy(), box_vel=d.qvel[c.box_dof:c.box_dof + 3].copy(), tcp_pos=tcp, tcp_rot=R.ravel(), box_in_tcp=R.T @ (b - tcp), ctrl_exec=np.asarray(ctrl_exec, float).copy(), **r)
+        c = self.cmap
+        if self.refresh:
+            self.cmap.mj.mj_copyData(self._scr, self.m, d); self.cmap.mj.mj_forward(self.m, self._scr); src = self._scr
+        else: src = d
+        r = c.read_contacts(src); tcp = src.xpos[c.tcp].copy(); R = src.xmat[c.tcp].reshape(3, 3).copy(); b = src.xpos[c.box_body].copy(); row = dict(g_exec=float(g_exec), g_meas=float(d.qpos[c.finger_qadr]), box_pos=b, box_quat=src.xquat[c.box_body].copy(), box_vel=d.qvel[c.box_dof:c.box_dof + 3].copy(), tcp_pos=tcp, tcp_rot=R.ravel(), box_in_tcp=R.T @ (b - tcp), ctrl_exec=np.asarray(ctrl_exec, float).copy(), **r)
         for k in FIELDS: self.rows[k].append(row[k])
         self._last = row
     def record_final(self, d):
@@ -51,7 +57,7 @@ class TraceRecorder:
 def to_labeller_trace(arrs, meta):
     """map the recorder arrays onto the schema of eval/g2b_labeller.py"""
     m = dict(meta); m.setdefault("t0", 0); m.setdefault("valid", True); valid = all(np.isfinite(arrs[k]).all() for k in ("g_exec", "nL", "nR", "FL", "FR", "box_pos", "box_vel")) and int(arrs["neg_normal"].sum()) == 0; m["valid"] = bool(m["valid"] and valid)
-    return dict(g_exec=arrs["g_exec"], nL=arrs["nL"], nR=arrs["nR"], FL=arrs["FL"], FR=arrs["FR"], box_pos=arrs["box_pos"], box_vel=arrs["box_vel"], Fh=arrs["Fh"], meta=m)
+    return dict(g_exec=arrs["g_exec"], g_meas=arrs["g_meas"], nL=arrs["nL"], nR=arrs["nR"], FL=arrs["FL"], FR=arrs["FR"], box_pos=arrs["box_pos"], box_vel=arrs["box_vel"], Fh=arrs["Fh"], meta=m)       # meta must carry t0, box_z0 and g_prev0 (the gripper target in force before row 0)
 def _atomic_write(path, data_bytes):
     path = Path(path); path.parent.mkdir(parents=True, exist_ok=True); fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp"); os.close(fd); Path(tmp).write_bytes(data_bytes); os.replace(tmp, path)
 def save_trace(path_base, arrs, meta, label=None, code_files=()):

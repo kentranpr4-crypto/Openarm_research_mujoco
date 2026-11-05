@@ -7,13 +7,16 @@ Trace schema (arrays of equal length N = observed rows; row i = observation befo
   meta: t0 (int, absolute step of row 0), box_z0 [m] (box height at episode start), valid (bool).  Optional: Fh [N] palm force (reported, not used by the labels).
 r2 TIME INDEXING (X2): row i = observation BEFORE the action of step t0+i.  The command g_exec[i] is issued AFTER row i; its first physical consequence is in row i+1.  Hence: COMMAND events (close_command, release_command) carry the ISSUE index i; OBSERVATION conjunctions (acquisition, held, loss) use the command that produced the row, g_app[i] = g_exec[i-1] (row 0: meta.g_prev0, else g_exec[0] and flagged).  Physical opening (g_meas, optional) is a separate timeline event.
 r2 INDEXING RULES (C3/C4, frozen text): first_run(mask, lo, hi, k) = first START s in [lo, hi] with mask[s:s+k] all True and s+k <= N.  A failure/decision that needs a run starting at the last allowed start is declared only if rows up to hi+k-1 are observed (else TIMEOUT/CENSORED).  Retention window = rows [t_lc, t_end) HALF-OPEN, t_end = min(t_lc+RET_WIN, t_release_cmd+1) (row t_release_cmd is the last row not yet affected by the release command); a loss/unintended release is inside iff its onset row s < t_end (unintended release: command row < t_lc+RET_WIN).  E2 TRUE needs rows through t_end+K_LOSS-2 observed.  grasp_lost counts only if its onset row <= t_release_cmd.
+r2-X4 (E3 requires a CONFIRMED physical release): events target_arrival (box inside the release region R_REL and <= Z_REL above rest for K_ARR rows, start in [t_lc, t_release_cmd]); release_command (commanded opening); release_physical_onset (measured finger rise, timeline only); release_confirmed = first_run(not clamped AND opened, from t_release_cmd+1, start <= t_release_cmd+CONFIRM_BUDGET, K_REL) where clamped = held (both fingers in contact with >= F_HELD) and opened = g_meas - running minimum of g_meas since t_ga >= OPEN_CONFIRM (8 mm); placement_settled = first_run(box in the 3 cm region at rest height, speed < REST_V, AND not clamped, from t_release_confirmed (= VERIFICATION row), K_SETTLE) - so the 10-row window can only START at/after the verified release.
+X4 TIMESTAMPS (three distinct kinds): ONSET - release_command (issue row), release_physical_onset, release_confirmed_onset (first row of the confirmed state, rc); VERIFICATION - release_confirmed = rc + K_REL - 1 (the first row at which all K_REL required observations exist; the release is never marked verified earlier); DECISION - e3_decision_row (first observed row from which the E3 value is fixed: SUCCESS ts+K_SETTLE-1; NOT_SETTLED rv+SETTLE_BUDGET; RELEASE_NOT_CONFIRMED t_cmd+CONFIRM_BUDGET+K_REL-1; NO_TARGET_ARRIVAL t_cmd+K_ARR-1; None when undecided/other terminals).
+X4 policy: no confirmed release within CONFIRM_BUDGET+K_REL-1 observed rows -> PLACEMENT_FAILURE/RELEASE_NOT_CONFIRMED (E3 FALSE); trace (or horizon) ends earlier -> TIMEOUT (E3 CENSORED, never TRUE); g_meas is REQUIRED (missing/non-finite -> INVALID).
 Units: metres, newtons, seconds (dt = 0.05 s), steps.  World frame z up; tray centre (0.44, 0.30) m; resting box-centre height 0.384 m."""
 import json, hashlib, numpy as np
 DT = 0.05
-PARAMS = dict(G_CLOSE=0.040, G_ACQ=0.030, F_ACQ=5.0, K_ACQ=5, ACQ_BUDGET=25, R_LIFT=0.03, K_LIFT=3, LIFT_BUDGET=40, F_HELD=2.5, K_LOSS=3, OPEN_RISE=0.004, K_OPEN=2, RET_WIN=60, EARLY_SLIP=15, SHORT_WINDOW=20, CONTRACT="v2-r2-draft",
+PARAMS = dict(G_CLOSE=0.040, G_ACQ=0.030, F_ACQ=5.0, K_ACQ=5, ACQ_BUDGET=25, R_LIFT=0.03, K_LIFT=3, LIFT_BUDGET=40, F_HELD=2.5, K_LOSS=3, OPEN_RISE=0.004, K_OPEN=2, RET_WIN=60, EARLY_SLIP=15, SHORT_WINDOW=20, OPEN_CONFIRM=0.008, K_REL=3, K_ARR=3, CONFIRM_BUDGET=40, CONTRACT="v2-r2-x4-draft",
               TRAY_X=0.44, TRAY_Y=0.30, REST_Z=0.384, R_REL=0.05, Z_REL=0.05, PLACE_XY=0.03, PLACE_Z=0.006, REST_V=0.02, K_SETTLE=10, SETTLE_BUDGET=40, T_MAX=160)
-BANDS = dict(R_LIFT=0.005, F_ACQ=1.0, F_HELD=0.5, OPEN_RISE=0.001, R_REL=0.005, Z_REL=0.005, PLACE_XY=0.003, PLACE_Z=0.0015, REST_V=0.004)       # +- perturbation of a decisive threshold [its unit]
-KBANDS = ("K_ACQ", "K_LIFT", "K_LOSS", "K_OPEN", "K_SETTLE", "RET_WIN")                                                                                         # +-1 step
+BANDS = dict(R_LIFT=0.005, F_ACQ=1.0, F_HELD=0.5, OPEN_RISE=0.001, R_REL=0.005, Z_REL=0.005, PLACE_XY=0.003, PLACE_Z=0.0015, REST_V=0.004, OPEN_CONFIRM=0.002)       # +- perturbation of a decisive threshold [its unit]
+KBANDS = ("K_ACQ", "K_LIFT", "K_LOSS", "K_OPEN", "K_SETTLE", "RET_WIN", "K_REL", "K_ARR")                                                                                         # +-1 step
 TERMINALS = ("INVALID", "ACQUISITION_FAILURE", "CARRY_DROP", "RELEASE_OUTSIDE_TARGET", "PLACEMENT_FAILURE", "PLACEMENT_SUCCESS", "TIMEOUT")
 def params_hash(p=PARAMS): return hashlib.sha256(json.dumps(p, sort_keys=True).encode()).hexdigest()
 AMBIGUITY_SPEC = dict(bands=BANDS, k_bands=list(KBANDS), k_delta=1, extra=dict(R_LIFT_sensitivity=0.05))
@@ -36,7 +39,7 @@ def _arrays(tr):
 def _core(tr, p):
     a = _arrays(tr); g, gap, box = a["g"], a["gap"], a["box"]; N = len(g); t0 = int(tr["meta"].get("t0", 0)); z0 = float(tr["meta"]["box_z0"]); rise = box[:, 2] - z0; tray = np.array([p["TRAY_X"], p["TRAY_Y"]]); dxy = np.linalg.norm(box[:, :2] - tray, axis=1)
     out = dict(events={}, terminal=None, subtype=None, E1="CENSORED", E2="CENSORED", E3="CENSORED", N=N, t0=t0, intended_release=None, vel_unavailable=False)
-    ev = out["events"]; ok_all = all(np.isfinite(np.asarray(tr[k], float)).all() for k in ("g_exec", "nL", "nR", "FL", "FR", "box_pos"))
+    ev = out["events"]; ok_all = all(np.isfinite(np.asarray(tr[k], float)).all() for k in ("g_exec", "nL", "nR", "FL", "FR", "box_pos")) and a["meas"] is not None and bool(np.isfinite(a["meas"]).all())
     if (not ok_all) or (not tr["meta"].get("valid", True)) or N < 2: out.update(terminal="INVALID", E1="INVALID", E2="INVALID", E3="INVALID"); return out
     horizon_reached = (t0 + N) >= p["T_MAX"]
     def finish(term, sub=None):
@@ -80,9 +83,19 @@ def _core(tr, p):
     if gl is not None: out["E3"] = "FALSE"; return finish("CARRY_DROP", "EARLY_SLIP" if gl - lc <= p["EARLY_SLIP"] else "LATE_CARRY_DROP")
     if ro is None: return finish("TIMEOUT")                                                                               # carry unresolved at the end of the observation
     if rel_ok is False: out["E3"] = "FALSE"; return finish("RELEASE_OUTSIDE_TARGET", out["unintended_subtype"])
-    ok = (dxy < p["PLACE_XY"]) & (np.abs(box[:, 2] - p["REST_Z"]) < p["PLACE_Z"]) & np.isfinite(a["v"]) & (a["v"] < p["REST_V"]); ts = first_run(ok, ro, ro + p["SETTLE_BUDGET"] - p["K_SETTLE"] + 1, p["K_SETTLE"]); out["vel_unavailable"] = bool((~np.isfinite(a["v"][ro:ro + p["SETTLE_BUDGET"]])).any())
-    if ts is not None: ev["placement_settled"] = ts + t0; out["E3"] = "TRUE"; return finish("PLACEMENT_SUCCESS")
-    if N - 1 >= ro + p["SETTLE_BUDGET"]: out["E3"] = "FALSE"; return finish("PLACEMENT_FAILURE")
+    inreg = (dxy < p["R_REL"]) & ((box[:, 2] - p["REST_Z"]) <= p["Z_REL"]); arr = first_run(inreg, lc, ro, p["K_ARR"])
+    if arr is None:
+        if N - 1 >= ro + p["K_ARR"] - 1: out["E3"] = "FALSE"; out["e3_decision_row"] = ro + p["K_ARR"] - 1 + t0; return finish("PLACEMENT_FAILURE", "NO_TARGET_ARRIVAL")
+        return finish("TIMEOUT")
+    ev["target_arrival"] = arr + t0
+    pm = np.minimum.accumulate(a["meas"][ga:]); opened = np.zeros(N, bool); opened[ga:] = (a["meas"][ga:] - pm) >= p["OPEN_CONFIRM"]; rc = first_run((~held) & opened, ro + 1, ro + p["CONFIRM_BUDGET"], p["K_REL"])
+    if rc is None:
+        if N - 1 >= ro + p["CONFIRM_BUDGET"] + p["K_REL"] - 1: out["E3"] = "FALSE"; out["e3_decision_row"] = ro + p["CONFIRM_BUDGET"] + p["K_REL"] - 1 + t0; return finish("PLACEMENT_FAILURE", "RELEASE_NOT_CONFIRMED")
+        return finish("TIMEOUT")
+    rv = rc + p["K_REL"] - 1; ev["release_confirmed_onset"] = rc + t0; ev["release_confirmed"] = rv + t0
+    ok = (dxy < p["PLACE_XY"]) & (np.abs(box[:, 2] - p["REST_Z"]) < p["PLACE_Z"]) & np.isfinite(a["v"]) & (a["v"] < p["REST_V"]) & (~held); ts = first_run(ok, rv, rv + p["SETTLE_BUDGET"] - p["K_SETTLE"] + 1, p["K_SETTLE"]); out["vel_unavailable"] = bool((~np.isfinite(a["v"][rv:rv + p["SETTLE_BUDGET"]])).any())
+    if ts is not None: ev["placement_settled"] = ts + t0; out["E3"] = "TRUE"; out["e3_decision_row"] = ts + p["K_SETTLE"] - 1 + t0; return finish("PLACEMENT_SUCCESS")
+    if N - 1 >= rv + p["SETTLE_BUDGET"]: out["E3"] = "FALSE"; out["e3_decision_row"] = rv + p["SETTLE_BUDGET"] + t0; return finish("PLACEMENT_FAILURE", "NOT_SETTLED")
     return finish("TIMEOUT")
 def _margins(tr, p, core):
     """signed margins at the decisive steps (positive = inside the 'satisfied' side of the threshold, in the threshold's unit)"""
@@ -95,13 +108,15 @@ def _margins(tr, p, core):
         i = ev["release_command"] - t0; ga = ev["grasp_acquired"] - t0; m["release_onset_dg_m"] = float(g[i] - g[ga:i + 1].min() - p["OPEN_RISE"]); dxy = float(np.linalg.norm(box[i, :2] - np.array([p["TRAY_X"], p["TRAY_Y"]]))); m["release_dxy_m"] = float(p["R_REL"] - dxy); m["release_height_m"] = float(p["Z_REL"] - (box[i, 2] - p["REST_Z"]))
     if "grasp_lost" in ev:
         i = ev["grasp_lost"] - t0; s = slice(i, i + p["K_LOSS"]); m["loss_force_N"] = float(p["F_HELD"] - np.maximum(np.minimum(a["FL"][s], a["FR"][s]), 0).max())
+    if "release_confirmed_onset" in ev and a["meas"] is not None:
+        i = ev["release_confirmed_onset"] - t0; ga_ = ev["grasp_acquired"] - t0; pm_ = np.minimum.accumulate(a["meas"][ga_:]); m["release_open_m"] = float(((a["meas"][ga_:] - pm_)[i - ga_:i - ga_ + p["K_REL"]]).min() - p["OPEN_CONFIRM"])
     if "placement_settled" in ev:
         i = ev["placement_settled"] - t0; s = slice(i, i + p["K_SETTLE"]); dxy = np.linalg.norm(box[s, :2] - np.array([p["TRAY_X"], p["TRAY_Y"]]), axis=1); m["place_dxy_m"] = float(p["PLACE_XY"] - dxy.max()); m["place_z_m"] = float(p["PLACE_Z"] - np.abs(box[s, 2] - p["REST_Z"]).max()); m["place_v_ms"] = float(p["REST_V"] - a["v"][s].max())
     return m
 def label(tr, p=PARAMS):
     """-> dict(terminal, subtype, events, margins, endpoints{E1,E2,E3: {value, ambiguous, adverse, favourable}}, ambiguous_terminal, observed{...}, params_hash)."""
     core = _core(tr, p); out = dict(terminal=core["terminal"], subtype=core["subtype"], events=core["events"], params_hash=params_hash(p), observed=dict(rows=core["N"], t0=core["t0"], abs_end=core["t0"] + core["N"], horizon_reached=bool(core["t0"] + core["N"] >= p["T_MAX"]), window_len=core.get("window_len")))
-    out["contract"] = p["CONTRACT"]; out["spec_hash"] = spec_hash() if p is PARAMS else None; out["ambiguity_spec"] = AMBIGUITY_SPEC; out["velocity_unavailable"] = bool(core.get("vel_unavailable")); out["g_prev0_assumed"] = tr["meta"].get("g_prev0") is None
+    out["contract"] = p["CONTRACT"]; out["spec_hash"] = spec_hash() if p is PARAMS else None; out["ambiguity_spec"] = AMBIGUITY_SPEC; out["velocity_unavailable"] = bool(core.get("vel_unavailable")); out["e3_decision_row"] = core.get("e3_decision_row"); out["g_prev0_assumed"] = tr["meta"].get("g_prev0") is None
     out["margins"] = _margins(tr, p, core) if core["terminal"] != "INVALID" else {}
     alt = []
     for k, d in BANDS.items():

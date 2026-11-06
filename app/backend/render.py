@@ -4,7 +4,10 @@ import os, sys, io, threading, collections
 from . import security as S
 os.environ.setdefault("MUJOCO_GL", "osmesa")
 class RenderUnavailable(Exception): pass
-W, H = 480, 360
+def _size():
+    try: w, h = (int(x) for x in os.environ.get("OPENARM_STUDIO_RENDER_SIZE", "480x360").lower().split("x")); assert 160 <= w <= 1920 and 120 <= h <= 1080; return w, h
+    except Exception: return 480, 360
+W, H = _size()                                                        # OPENARM_STUDIO_RENDER_SIZE=960x720 for a larger (slower) software render
 CAMERAS = ("overview", "front", "wrist_left", "wrist_right")
 class SceneRenderer:
     def __init__(self):
@@ -20,7 +23,7 @@ class SceneRenderer:
             import numpy as np, mujoco, lab_scene
             from cameras import CameraRig
             from control.action_adapter import ActionAdapter
-            m, d = lab_scene.compile_lab(); m.light_castshadow[:] = 0; m.mat_reflectance[:] = 0.0; m.vis.quality.offsamples = 0          # same 'fast' profile as LabEnv
+            m, d = lab_scene.compile_lab(); m.light_castshadow[:] = 0; m.mat_reflectance[:] = 0.0; m.vis.quality.offsamples = 0; m.vis.global_.offwidth = max(W, int(m.vis.global_.offwidth)); m.vis.global_.offheight = max(H, int(m.vis.global_.offheight))          # same 'fast' profile as LabEnv
             self.np, self.mj, self.lab_scene = np, mujoco, lab_scene; self.m, self.d = m, d; self.adapter = ActionAdapter(m, 20); self.rig = CameraRig(m, W, H); self.free = mujoco.Renderer(m, H, W)
             self.box_adr = int(m.jnt_qposadr[m.joint("blue_box_free").id]); self.tcp_id = m.body("openarm_left_hand_tcp").id
             self.finger2 = {s: int(m.jnt_qposadr[m.joint(f"openarm_{s}_finger_joint2").id]) for s in ("left", "right")}; self.ready = True

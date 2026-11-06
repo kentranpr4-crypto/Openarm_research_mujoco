@@ -1,0 +1,3 @@
+# Minimal runtime (Python >= 3.10): recorded replay, telemetry, experiments, architecture. No torch, no checkpoints.
+numpy>=1.24
+Pillow>=9.0

@@ -1,0 +1,287 @@
+{
+ "banner": "DESIGN ONLY - the grasp-focused world model is NOT TRAINED. Nothing on this page is a model output.",
+ "nodes": [
+  {
+   "id": "rgbd",
+   "label": "RGB-D / camera + joint state",
+   "x": 40,
+   "y": 40,
+   "status": "DESIGN ONLY",
+   "purpose": "Sensor inputs of the future system.",
+   "existing": "obs",
+   "proposed_io": {
+    "inputs": [
+     "rgb (3,H,W)",
+     "depth (1,H,W) - NOT available in the current simulator pipeline",
+     "joint state (16,)"
+    ],
+    "outputs": [
+     "observation tuple"
+    ]
+   },
+   "sim2real": "depth and camera calibration on the real robot are unverified",
+   "files": []
+  },
+  {
+   "id": "geom",
+   "label": "Perception / geometry encoder",
+   "x": 290,
+   "y": 40,
+   "status": "DESIGN ONLY",
+   "purpose": "Estimate box pose and grasp geometry from images instead of the privileged simulator box pose.",
+   "proposed_io": {
+    "inputs": [
+     "rgb-d tensors"
+    ],
+    "outputs": [
+     "box pose estimate (7)",
+     "uncertainty"
+    ]
+   },
+   "sim2real": "REQUIRED to remove the privileged box pose; does not exist",
+   "files": []
+  },
+  {
+   "id": "act",
+   "label": "ACT policy",
+   "x": 540,
+   "y": 40,
+   "status": "IMPLEMENTED",
+   "purpose": "Existing component (see current architecture).",
+   "existing": "act",
+   "proposed_io": {
+    "inputs": [
+     "state (16,)",
+     "images"
+    ],
+    "outputs": [
+     "chunk (20,16)"
+    ]
+   },
+   "sim2real": "trained on simulator demonstrations only",
+   "files": [
+    "eval/closed_loop_pilot.py"
+   ]
+  },
+  {
+   "id": "cands",
+   "label": "Grasp-correction candidates",
+   "x": 790,
+   "y": 40,
+   "status": "DESIGN ONLY",
+   "purpose": "Deployable candidates only (no oracle inputs): the G2b deployable family D1, D2, H1 plus S0 control.",
+   "existing": "cand_g2",
+   "proposed_io": {
+    "inputs": [
+     "ACT chunk",
+     "estimated box pose"
+    ],
+    "outputs": [
+     "K candidates (K,20,16)"
+    ]
+   },
+   "sim2real": "O1 / O3 need the true box pose and cannot be deployed",
+   "files": [
+    "eval/g2a_act_corrections.py"
+   ]
+  },
+  {
+   "id": "gwm",
+   "label": "Grasp-focused world model",
+   "x": 790,
+   "y": 190,
+   "status": "NOT TRAINED",
+   "purpose": "Predict future grasp events for each candidate: acquired, retained, early slip, carry drop, release confirmed, placement success.",
+   "proposed_io": {
+    "inputs": [
+     "history window (H,D) of proprioception + estimated object state",
+     "candidate chunk (20,16)"
+    ],
+    "outputs": [
+     "event logits (6, T) over the horizon",
+     "uncertainty"
+    ]
+   },
+   "sim2real": "needs real contact / force signals that are unverified on the robot",
+   "files": []
+  },
+  {
+   "id": "risk",
+   "label": "Candidate risk scoring",
+   "x": 540,
+   "y": 190,
+   "status": "DESIGN ONLY",
+   "purpose": "Combine event probabilities into a risk score per candidate.",
+   "proposed_io": {
+    "inputs": [
+     "event probabilities"
+    ],
+    "outputs": [
+     "risk score per candidate"
+    ]
+   },
+   "sim2real": "calibration of the probabilities is required first (the WM3-B calibration gate FAILed)",
+   "files": []
+  },
+  {
+   "id": "select",
+   "label": "Action selection",
+   "x": 290,
+   "y": 190,
+   "status": "DESIGN ONLY",
+   "purpose": "Choose the candidate with the lowest risk; fall back to nominal ACT when uncertain.",
+   "proposed_io": {
+    "inputs": [
+     "risk scores"
+    ],
+    "outputs": [
+     "one chunk (20,16)"
+    ]
+   },
+   "sim2real": "-",
+   "files": []
+  },
+  {
+   "id": "safety",
+   "label": "Safety adapter",
+   "x": 40,
+   "y": 190,
+   "status": "IMPLEMENTED",
+   "purpose": "Existing clip -> slew adapter.",
+   "existing": "safety",
+   "proposed_io": {
+    "inputs": [
+     "action"
+    ],
+    "outputs": [
+     "safe control (16,)"
+    ]
+   },
+   "sim2real": "real-robot limits unvalidated",
+   "files": [
+    "control/safety_limits.py",
+    "control/action_adapter.py"
+   ]
+  },
+  {
+   "id": "ctrl",
+   "label": "OpenArm controller",
+   "x": 40,
+   "y": 320,
+   "status": "DESIGN ONLY",
+   "purpose": "Real-robot controller interface (not part of this repository's validated results).",
+   "proposed_io": {
+    "inputs": [
+     "safe control"
+    ],
+    "outputs": [
+     "joint commands"
+    ]
+   },
+   "sim2real": "no real-robot experiment exists",
+   "files": []
+  }
+ ],
+ "edges": [
+  {
+   "s": "rgbd",
+   "t": "geom"
+  },
+  {
+   "s": "geom",
+   "t": "act"
+  },
+  {
+   "s": "act",
+   "t": "cands"
+  },
+  {
+   "s": "cands",
+   "t": "gwm"
+  },
+  {
+   "s": "gwm",
+   "t": "risk"
+  },
+  {
+   "s": "risk",
+   "t": "select"
+  },
+  {
+   "s": "select",
+   "t": "safety"
+  },
+  {
+   "s": "safety",
+   "t": "ctrl"
+  },
+  {
+   "s": "ctrl",
+   "t": "rgbd",
+   "label": "new observation -> replan"
+  }
+ ],
+ "sim2real": [
+  {
+   "item": "Privileged box pose",
+   "status": "UNAVAILABLE on the real robot",
+   "note": "used by WM3-B, by the labeller, and by the O1 / O3 corrections"
+  },
+  {
+   "item": "Contact state / per-finger forces",
+   "status": "UNVERIFIED on the real robot",
+   "note": "simulator contact points and normal forces; real sensing path unknown"
+  },
+  {
+   "item": "Oracle correction (O1, O3)",
+   "status": "NOT DEPLOYABLE",
+   "note": "needs the true box pose"
+  },
+  {
+   "item": "Ground-truth physical state (box velocity, penetration)",
+   "status": "UNAVAILABLE on the real robot",
+   "note": "simulator internals"
+  }
+ ],
+ "candidate_cards": [
+  {
+   "id": "c0",
+   "text": "Nominal ACT chunk"
+  },
+  {
+   "id": "O1",
+   "text": "Oracle depth cancel (needs true box pose)"
+  },
+  {
+   "id": "O3",
+   "text": "Oracle depth + lateral + yaw cancel"
+  },
+  {
+   "id": "D1",
+   "text": "2 cm shallower grasp (deployable)"
+  },
+  {
+   "id": "D2",
+   "text": "Close delayed 8 steps (deployable)"
+  },
+  {
+   "id": "H1",
+   "text": "2 cm deeper (harm control)"
+  },
+  {
+   "id": "S0",
+   "text": "8-step time-shift control"
+  }
+ ],
+ "timeline_illustration": {
+  "label": "SYNTHETIC ILLUSTRATION - NOT MODEL OUTPUT",
+  "events": [
+   "grasp acquired",
+   "grasp retained",
+   "early slip",
+   "carry drop",
+   "release confirmed",
+   "placement success"
+  ]
+ }
+}

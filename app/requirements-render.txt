@@ -1,0 +1,4 @@
+# Optional: MuJoCo scene reconstruction (Mode B and pilot / WM-1 replay). Also needs the pinned upstream model, see app/README.md.
+-r requirements.txt
+mujoco>=3.6.0
+imageio>=2.30                  # imported by sim/cameras.py (no video is written)

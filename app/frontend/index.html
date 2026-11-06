@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpenArm Research Studio</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div id="app" data-view="overview">
+  <aside id="nav">
+    <div class="brand"><span class="logo">&#9672;</span><div><b>OpenArm</b><small>Research Studio</small></div></div>
+    <nav id="navlinks"></nav>
+    <div class="navfoot"><span class="pill ro">READ-ONLY</span><small id="navhead"></small></div>
+  </aside>
+  <header id="top">
+    <div class="tcell"><label>Project</label><b>OpenArm v1 &middot; MuJoCo &middot; ACT &middot; World Model</b></div>
+    <div class="tcell"><label>Simulation</label><b id="t-sim">checking&hellip;</b></div>
+    <div class="tcell"><label>Active experiment</label><b id="t-exp">&mdash;</b></div>
+    <div class="tcell"><label>Model / checkpoint</label><b id="t-ckpt">&mdash;</b></div>
+    <div class="tcell"><label>Evidence status</label><span id="t-ev">&mdash;</span></div>
+    <div class="tcell"><label>Data source</label><b id="t-src">&mdash;</b></div>
+  </header>
+  <main id="main"></main>
+  <aside id="inspector"></aside>
+  <footer id="timeline"><canvas id="tl" height="120"></canvas></footer>
+</div>
+<script type="module" src="/static/js/main.js"></script>
+</body>
+</html>

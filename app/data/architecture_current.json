@@ -1,0 +1,545 @@
+{
+ "layers": [
+  {
+   "id": "current",
+   "name": "CURRENT IMPLEMENTATION",
+   "text": "Components that exist in the repository today and their data interfaces. Only the Stage-1 combination was ever run online (see HISTORICAL EXPERIMENT); this is not a validated production pipeline."
+  },
+  {
+   "id": "stage1",
+   "name": "HISTORICAL EXPERIMENT - Stage 1 (ACT checkpoint ranking with WM3-B)",
+   "text": "The flow of the Stage-1 pilot: three ACT checkpoint chunks ranked by a frozen score of WM3-B predictions. Development evidence; ranking did not show an overall success improvement."
+  },
+  {
+   "id": "g2b",
+   "name": "HISTORICAL / DESIGN - G2a / G2b grasp correction",
+   "text": "Geometric correction candidates of the ACT chunk executed from a snapshot; NO world model is involved. G2a executed (outcome claims invalidated); G2b is design + integration self-tests only."
+  }
+ ],
+ "nodes": [
+  {
+   "id": "obs",
+   "label": "Camera observation + joint state",
+   "x": 40,
+   "y": 40,
+   "layers": [
+    "current",
+    "stage1",
+    "g2b"
+   ],
+   "purpose": "Policy inputs: three camera images and the 16-D joint state of the actuated joints. Ground truth (box pose, contacts) is a separate evaluation-only channel.",
+   "files": [
+    "sim/lab_env.py",
+    "sim/cameras.py",
+    "control/action_adapter.py"
+   ],
+   "inputs": [
+    "MuJoCo state"
+   ],
+   "outputs": [
+    "images front / wrist_left / wrist_right: (120,160,3) uint8",
+    "state: (16,) float32 = qpos of the actuated joints (left j1-7, left finger, right j1-7, right finger)"
+   ],
+   "shapes_verified": "control/action_adapter.py docstring; saved episode arrays",
+   "model_type": "none",
+   "status": "IMPLEMENTED",
+   "limitations": [
+    "Privileged `info` channel must never reach the policy.",
+    "Camera intrinsics partly unverified (head camera spec from memory, see sim/cameras.py)."
+   ],
+   "experiment": "all",
+   "provenance": "saved dataset episodes (outputs/datasets)"
+  },
+  {
+   "id": "act",
+   "label": "ACT policy",
+   "x": 290,
+   "y": 40,
+   "layers": [
+    "current",
+    "stage1",
+    "g2b"
+   ],
+   "purpose": "Imitation policy trained on scripted-expert demonstrations; produces a 20-step action chunk from the current observation.",
+   "files": [
+    "eval/closed_loop_pilot.py",
+    "policies/baseline.py"
+   ],
+   "artifacts": [
+    "outputs/checkpoints/e6b_c0_seed0/last/model.safetensors",
+    "outputs/checkpoints/act_full_v1/train_info.json"
+   ],
+   "inputs": [
+    "state (16,)",
+    "3 images"
+   ],
+   "outputs": [
+    "chunk (20,16) absolute actuator targets"
+   ],
+   "shapes_verified": "ChunkPolicy asserts (20,16); config chunk_size = n_action_steps = 20, use_vae False",
+   "model_type": "ACT transformer (LeRobot ACTPolicy), deterministic at inference",
+   "status": "IMPLEMENTED",
+   "limitations": [
+    "Stateless chunk wrapper: no action queue, no temporal ensembling.",
+    "Single-seed training; between-train variance unknown.",
+    "Unseen-pose success 18/30 in the V1 audit."
+   ],
+   "experiment": "act_v1",
+   "provenance": "checkpoint metadata + audit_results.json"
+  },
+  {
+   "id": "chunk",
+   "label": "Action chunk (20x16)",
+   "x": 540,
+   "y": 40,
+   "layers": [
+    "current",
+    "stage1",
+    "g2b"
+   ],
+   "purpose": "Absolute joint-position targets for the next 20 control steps (dt = 0.05 s) in actuator order; gripper unit is metres.",
+   "files": [
+    "control/action_adapter.py"
+   ],
+   "inputs": [
+    "ACT output"
+   ],
+   "outputs": [
+    "(20,16) float"
+   ],
+   "shapes_verified": "control/action_adapter.py docstring",
+   "model_type": "data",
+   "status": "IMPLEMENTED",
+   "limitations": [
+    "Open loop within a chunk."
+   ],
+   "experiment": "all",
+   "provenance": "code"
+  },
+  {
+   "id": "cand_s1",
+   "label": "Candidate generation (checkpoint ensemble)",
+   "x": 290,
+   "y": 170,
+   "layers": [
+    "stage1"
+   ],
+   "purpose": "Stage 1: three ACT checkpoints c0_s0, c0_s1, c0_s2 each produce one candidate chunk.",
+   "files": [
+    "eval/closed_loop_pilot.py"
+   ],
+   "artifacts": [
+    "outputs/closed_loop_pilot/protocol_freeze.json"
+   ],
+   "inputs": [
+    "observation"
+   ],
+   "outputs": [
+    "3 candidate chunks (3,20,16)"
+   ],
+   "shapes_verified": "build_window / ChunkPolicy code",
+   "model_type": "3 ACT checkpoints",
+   "status": "IMPLEMENTED",
+   "limitations": [
+    "Candidates differ only by training seed / statistics."
+   ],
+   "experiment": "stage1",
+   "provenance": "Stage-1 protocol freeze"
+  },
+  {
+   "id": "wm",
+   "label": "WM3-B dynamics",
+   "x": 540,
+   "y": 170,
+   "layers": [
+    "current",
+    "stage1"
+   ],
+   "purpose": "Predict future box and contact evolution for a candidate action sequence from privileged simulator state.",
+   "files": [
+    "eval/wm3b_model.py",
+    "eval/wm2_models.py"
+   ],
+   "artifacts": [
+    "outputs/wm3/models/wm3b.pt",
+    "outputs/wm3/model_config_wm3b.json"
+   ],
+   "inputs": [
+    "S_hist (4,8)",
+    "B_hist (4,7)",
+    "C_hist (4,7)",
+    "A_hist (4,8)",
+    "A_fut (20,8)"
+   ],
+   "outputs": [
+    "ridge joint forecast Y_s (20,8)",
+    "box Y_b (20,7) increments",
+    "contact Y_c (20,7)",
+    "4 event logits"
+   ],
+   "shapes_verified": "eval/closed_loop_pilot.py build_window and eval/wm3b_model.py GRUOC (code reading); output tensor shapes are not asserted by tests",
+   "model_type": "Ridge (alpha 10) + 2-layer GRU (256)",
+   "status": "IMPLEMENTED",
+   "limitations": [
+    "Depends on privileged simulator state (box pose, contact forces).",
+    "Independent evaluation: calibration gate G3 FAIL.",
+    "Offline error numbers are not task success."
+   ],
+   "experiment": "wm3b",
+   "provenance": "outputs/indep/evaluation_independent.json"
+  },
+  {
+   "id": "fut",
+   "label": "Future state prediction",
+   "x": 790,
+   "y": 170,
+   "layers": [
+    "stage1"
+   ],
+   "purpose": "Predicted box and contact trajectories over K = 20 steps for every candidate.",
+   "files": [
+    "eval/wm3b_model.py"
+   ],
+   "inputs": [
+    "WM3-B outputs"
+   ],
+   "outputs": [
+    "box (20,7), contact (20,7) per candidate"
+   ],
+   "shapes_verified": "code reading",
+   "model_type": "derived",
+   "status": "IMPLEMENTED",
+   "limitations": [
+    "Short horizon; not calibrated for decisions (G3)."
+   ],
+   "experiment": "stage1",
+   "provenance": "code"
+  },
+  {
+   "id": "score",
+   "label": "Candidate scoring",
+   "x": 790,
+   "y": 300,
+   "layers": [
+    "stage1"
+   ],
+   "purpose": "Frozen score J combining predicted box displacement and contact terms; lower is better.",
+   "files": [
+    "eval/decision_utility_lib.py"
+   ],
+   "inputs": [
+    "predicted box / contact"
+   ],
+   "outputs": [
+    "scalar score per candidate"
+   ],
+   "shapes_verified": "code reading",
+   "model_type": "hand-designed frozen function",
+   "status": "IMPLEMENTED",
+   "limitations": [
+    "Defined before the pilot; local correctness only."
+   ],
+   "experiment": "stage1",
+   "provenance": "Stage-1 freeze"
+  },
+  {
+   "id": "select",
+   "label": "Action selection",
+   "x": 540,
+   "y": 300,
+   "layers": [
+    "stage1"
+   ],
+   "purpose": "A0: default checkpoint; A1: random among the three; A2: argmin of the WM3-B score.",
+   "files": [
+    "eval/closed_loop_pilot.py"
+   ],
+   "inputs": [
+    "scores / policy"
+   ],
+   "outputs": [
+    "one chunk (20,16)"
+   ],
+   "shapes_verified": "code reading",
+   "model_type": "rule",
+   "status": "IMPLEMENTED",
+   "limitations": [
+    "A2 vs A1 and A2 vs A0 are INCONCLUSIVE (intervals contain 0)."
+   ],
+   "experiment": "stage1",
+   "provenance": "outputs/closed_loop_pilot/results/pilot_analysis.json"
+  },
+  {
+   "id": "cand_g2",
+   "label": "Grasp-correction candidates",
+   "x": 290,
+   "y": 300,
+   "layers": [
+    "g2b"
+   ],
+   "purpose": "ACT raw chunk -> remove gravity-comp offset -> FK -> geometric correction in the box frame -> IK -> absolute targets. G2a: 9 candidates; G2b: 7 (c0, O1, O3, D1, D2, H1, S0).",
+   "files": [
+    "eval/g2a_act_corrections.py",
+    "eval/g2b_s0.py"
+   ],
+   "artifacts": [
+    "outputs/g2a_act_corrections/protocol_freeze.json"
+   ],
+   "inputs": [
+    "ACT chunk",
+    "oracle box pose (O1, O3 only)"
+   ],
+   "outputs": [
+    "candidate chunk (20,16) per candidate"
+   ],
+   "shapes_verified": "code reading",
+   "model_type": "analytic correction + IK",
+   "status": "IMPLEMENTED",
+   "limitations": [
+    "O1 and O3 use the TRUE box pose (oracle) and are not deployable.",
+    "No world model is used in this flow."
+   ],
+   "experiment": "g2a / g2b",
+   "provenance": "G2a freeze"
+  },
+  {
+   "id": "safety",
+   "label": "Safety / action adapter",
+   "x": 290,
+   "y": 430,
+   "layers": [
+    "current",
+    "stage1",
+    "g2b"
+   ],
+   "purpose": "Rejects NaN / wrong shape, clips to ctrlrange and limits the slew rate before every command reaches the simulator.",
+   "files": [
+    "control/safety_limits.py",
+    "control/action_adapter.py"
+   ],
+   "inputs": [
+    "raw action (16,)",
+    "previous command"
+   ],
+   "outputs": [
+    "safe control (16,)"
+   ],
+   "shapes_verified": "control/action_adapter.py docstring",
+   "model_type": "rule",
+   "status": "IMPLEMENTED",
+   "limitations": [
+    "Slew limits are simulation-tuned; real-robot limits are not validated."
+   ],
+   "experiment": "all",
+   "provenance": "code"
+  },
+  {
+   "id": "mj",
+   "label": "MuJoCo OpenArm v1",
+   "x": 540,
+   "y": 430,
+   "layers": [
+    "current",
+    "stage1",
+    "g2b"
+   ],
+   "purpose": "Physics: OpenArm v1 bimanual model in the lab scene; 20 Hz control with 50 substeps of 1 ms.",
+   "files": [
+    "sim/lab_scene.py",
+    "sim/lab_env.py",
+    "sim/openarm_mujoco/README.md"
+   ],
+   "inputs": [
+    "safe control (16,)"
+   ],
+   "outputs": [
+    "next observation",
+    "ground-truth info (evaluation only)"
+   ],
+   "shapes_verified": "sim/lab_env.py",
+   "model_type": "simulator",
+   "status": "IMPLEMENTED",
+   "limitations": [
+    "Upstream OpenArm model files are not modified.",
+    "Simulation only."
+   ],
+   "experiment": "all",
+   "provenance": "code"
+  },
+  {
+   "id": "lab",
+   "label": "Event-based outcome labeller (G2b)",
+   "x": 790,
+   "y": 430,
+   "layers": [
+    "g2b"
+   ],
+   "purpose": "Turns a per-finger trace into events, one terminal outcome and E1 / E2 / E3 (TRUE / FALSE / CENSORED / INVALID) with ambiguity flags.",
+   "files": [
+    "eval/g2b_labeller.py",
+    "eval/g2b_trace.py"
+   ],
+   "inputs": [
+    "trace: g_exec, g_meas, nL, nR, FL, FR, box pose / velocity"
+   ],
+   "outputs": [
+    "events, terminal, endpoints"
+   ],
+   "shapes_verified": "trace schema tests (T+1 rows)",
+   "model_type": "deterministic rules",
+   "status": "IMPLEMENTED",
+   "limitations": [
+    "Validated on synthetic cases and integration self-tests only; independent blind annotation not run.",
+    "Contract r3 is a freeze candidate, not frozen."
+   ],
+   "experiment": "g2b",
+   "provenance": "eval/test_g2b_labeller.py reports"
+  },
+  {
+   "id": "s0",
+   "label": "S0 time-shift control",
+   "x": 40,
+   "y": 300,
+   "layers": [
+    "g2b"
+   ],
+   "purpose": "Holds the last executed target for 8 steps, resets policy state, resumes ACT: a pure schedule shift used as a timing control.",
+   "files": [
+    "eval/g2b_s0.py"
+   ],
+   "inputs": [
+    "snapshot",
+    "ACT"
+   ],
+   "outputs": [
+    "shifted rollout"
+   ],
+   "shapes_verified": "integration gate I3 (k = 0 equals nominal exactly)",
+   "model_type": "schedule",
+   "status": "IMPLEMENTED",
+   "limitations": [
+    "May genuinely change the physics, so non-equivalence does not by itself prove label timing bias."
+   ],
+   "experiment": "g2b",
+   "provenance": "integration reports"
+  }
+ ],
+ "edges": [
+  {
+   "s": "obs",
+   "t": "act",
+   "layers": [
+    "current",
+    "stage1",
+    "g2b"
+   ]
+  },
+  {
+   "s": "act",
+   "t": "chunk",
+   "layers": [
+    "current",
+    "stage1",
+    "g2b"
+   ]
+  },
+  {
+   "s": "chunk",
+   "t": "cand_s1",
+   "layers": [
+    "stage1"
+   ]
+  },
+  {
+   "s": "chunk",
+   "t": "cand_g2",
+   "layers": [
+    "g2b"
+   ]
+  },
+  {
+   "s": "cand_s1",
+   "t": "wm",
+   "layers": [
+    "stage1"
+   ]
+  },
+  {
+   "s": "wm",
+   "t": "fut",
+   "layers": [
+    "current",
+    "stage1"
+   ]
+  },
+  {
+   "s": "fut",
+   "t": "score",
+   "layers": [
+    "stage1"
+   ]
+  },
+  {
+   "s": "score",
+   "t": "select",
+   "layers": [
+    "stage1"
+   ]
+  },
+  {
+   "s": "cand_s1",
+   "t": "select",
+   "layers": [
+    "stage1"
+   ],
+   "label": "candidates"
+  },
+  {
+   "s": "select",
+   "t": "safety",
+   "layers": [
+    "stage1"
+   ]
+  },
+  {
+   "s": "cand_g2",
+   "t": "safety",
+   "layers": [
+    "g2b"
+   ]
+  },
+  {
+   "s": "s0",
+   "t": "safety",
+   "layers": [
+    "g2b"
+   ]
+  },
+  {
+   "s": "safety",
+   "t": "mj",
+   "layers": [
+    "current",
+    "stage1",
+    "g2b"
+   ]
+  },
+  {
+   "s": "mj",
+   "t": "obs",
+   "layers": [
+    "current",
+    "stage1",
+    "g2b"
+   ],
+   "label": "feedback"
+  },
+  {
+   "s": "mj",
+   "t": "lab",
+   "layers": [
+    "g2b"
+   ]
+  }
+ ]
+}

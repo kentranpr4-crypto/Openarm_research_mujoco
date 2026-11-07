@@ -1,0 +1,11 @@
+# OPTIONAL, NOT APPLIED.  Proposed change OUTSIDE research/supermimic_openarm/ (needs a separate approval):  app/backend/server.py, method Handler._api, before the final "unknown endpoint" line.
+# It is a no-op when the research package or its runs are absent; the app never imports torch because the adapter does not.
+--- a/app/backend/server.py
++++ b/app/backend/server.py
+@@ def _api(self, r, q):
+         parts = r.split("/")
++        if parts[0] == "supermimic":
++            try: from research.supermimic_openarm import studio_adapter as SM
++            except Exception: return self._json(dict(installed=False, reason="SuperMimic-OpenArm package not available"), 200)
++            code, obj = SM.handle("/".join(parts[1:]), q); return self._json(obj, code)
+         if r == "health": return self._json(health())

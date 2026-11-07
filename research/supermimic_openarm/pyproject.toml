@@ -1,0 +1,19 @@
+[project]
+name = "supermimic-openarm"
+version = "0.1.0"
+description = "SuperMimic-style differentiable-world-model policy optimisation for the OpenArm v1 MuJoCo scene (isolated research package)"
+requires-python = ">=3.10,<3.14"
+license = { text = "Same as the host repository" }
+# Direct dependencies (exact pins verified together: see requirements.lock.txt for the fully resolved set).
+dependencies = [
+  "torch==2.9.1",        # PyPI Linux x86_64 wheel = CUDA 12.8 build (nvidia-*-cu12 12.8.x pins); also the version used by the reference manipulation repo
+  "numpy==2.2.6",        # last numpy line that supports Python 3.10
+  "mujoco==3.17.0",
+  "pyyaml>=6.0",
+  "imageio>=2.30",       # imported by sim/lab_scene.py (no video is written)
+]
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+# This package is run from the repository root (python -m research.supermimic_openarm.train ...). It is not meant to be pip-installed.
+[tool.setuptools]
+py-modules = []

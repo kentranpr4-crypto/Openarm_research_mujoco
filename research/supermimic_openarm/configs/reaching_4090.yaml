@@ -1,0 +1,12 @@
+# P0 reaching: start here
+# Single RTX 4090 (24 GB). MuJoCo simulation runs on the CPU, the networks train on CUDA. VRAM numbers in README are ESTIMATES until benchmark.py has been run on the workstation.
+# env.num_envs = number of CPU MuJoCo environments (one process each with backend: subproc). Set it to at most (physical CPU cores - 2).
+experiment: {name: reaching_4090, seed: 1000, output_dir: outputs/supermimic_openarm, algo: supermimic}
+env: {task: reaching, num_envs: 64, backend: subproc, control_hz: 20, max_steps: 0, sim_backend: mujoco_cpu}
+replay: {capacity_per_env: 20000}            # num_envs x capacity x (2x34 + ...) float32 ~ 64 x 20000 x 0.5 KB, held in CPU RAM
+world_model: {hidden: 512, layers: 3, window: 8, batch_size: 2048, updates_per_iter: 10, lr: 0.0002, grad_clip: 1.0, term_weight: 1.0, contact_head: true, reward_head: false}
+actor: {hidden: 512, layers: 3, lr: 0.0002, action_param: delta, action_scale: 1.0, noise_std: 0.1}
+critic: {hidden: 256, layers: 2, lr: 0.0002, epochs: 5, minibatches: 4}
+imagination: {horizon: 16, batch_size: 4096, chunk_size: 1024, gamma: 0.99, lam: 0.95, grad_clip: 1.0, grad_clip_elementwise: 0.1}      # horizon: 8 | 16 | 32
+train: {iterations: 3000, steps_per_iter: 4, warmup_steps: 64, eval_interval: 100, eval_episodes: 32, checkpoint_interval: 100, log_interval: 10, save_replay: false}
+system: {device: cuda:0, precision: fp32, tf32: true, max_vram_gb: 20.0, torch_threads: 4}       # precision: fp32 | bf16 (bf16 is NOT_TESTED); max_vram_gb is a hard per-process cap

@@ -1,0 +1,10 @@
+# CPU debugging / smoke profile. Tiny networks, a few iterations: validates the pipeline, NOT a research result.
+experiment: {name: debug_cpu, seed: 1000, output_dir: outputs/supermimic_openarm, algo: supermimic}
+env: {task: reaching, num_envs: 2, backend: sync, control_hz: 20, max_steps: 40}
+replay: {capacity_per_env: 400}
+world_model: {hidden: 128, layers: 2, window: 4, batch_size: 64, updates_per_iter: 3, lr: 0.0003, contact_head: true, reward_head: false}
+actor: {hidden: 128, layers: 2, lr: 0.0003, action_param: delta, noise_std: 0.2}
+critic: {hidden: 128, layers: 2, lr: 0.0003, epochs: 1, minibatches: 2}
+imagination: {horizon: 8, batch_size: 128, chunk_size: 64, gamma: 0.99, lam: 0.95}
+train: {iterations: 4, steps_per_iter: 8, warmup_steps: 24, eval_interval: 2, eval_episodes: 2, checkpoint_interval: 2, log_interval: 1}
+system: {device: cpu, precision: fp32}

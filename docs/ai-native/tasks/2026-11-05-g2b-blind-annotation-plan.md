@@ -1,0 +1,42 @@
+# G2b blind annotation — FINAL PROPOSED PLAN (design only; no annotation run; annotator UNASSIGNED) — 2026-11-05
+Companion to the r3 freeze candidate. The existing development traces cannot serve as independent validation (the thresholds were changed after seeing them).
+
+## 1. Final proposed rubric (verbatim from `eval/g2b_annotation.py`, sha256 `23a31723f7a10e0ecd7eb5929f0597246622315d0e82d8739e8b327c1d28e6ba`)
+```
+G2b BLIND ANNOTATION RUBRIC v2-X4 DRAFT (design only; NOT frozen; no annotation has been run; its SHA256 will be recorded in the protocol freeze)
+You see anonymised plots of ONE branch: box height rise [m], box distance to the tray centre [m], EXECUTED gripper target [m] (the command), MEASURED finger position [m] (the physical opening), left- and right-finger contact force [N] and contact points, box-TCP distance [m], palm force [N]. You do not see the candidate, the arm, or any automatic label. Time axis: a command at step t first changes the measurement at step t+1.
+Judge the HISTORY (grasp, carry, release, rest), never only the final box position: a box that ends inside the target after a drop, a throw, or while still gripped is NOT a success.
+Choose exactly one TERMINAL OUTCOME:
+ 1 ACQUISITION_FAILURE - the gripper never closed, or closed without firm two-sided contact, or lost the box before it was lifted >= 3 cm, or never lifted >= 3 cm within 2 s of grasping, or opened before the lift.
+ 2 CARRY_DROP - after a confirmed lift the contact on one or both fingers disappears for >= 3 consecutive steps while the gripper target is still closed (the box slips or falls), before any opening command. A box that falls into the tray this way is a drop.
+ 3 RELEASE_OUTSIDE_TARGET - the gripper target starts to open (rises >= 4 mm above its minimum) while the box is farther than 5 cm from the tray centre, or more than 5 cm above the resting height over the tray.
+ 4 PLACEMENT_FAILURE - an opening command is given over the target region (within 5 cm, <= 5 cm above rest) but EITHER the fingers do not physically open (measured opening < 8 mm above the closed position, or the box is still clamped by both fingers) within 2 s of the command, OR the box does not come to rest within 3 cm of the tray centre (and within 6 mm of the resting height, speed < 0.02 m/s for 10 consecutive steps) within 2 s after the release is confirmed, OR the box is never shown to reach the target region.
+ 5 PLACEMENT_SUCCESS - ALL of: (a) the box reached the target region while carried; (b) the opening command was given; (c) the fingers physically opened by >= 8 mm and the box is no longer clamped by both fingers for >= 3 consecutive steps (confirmed release); (d) AFTER (c) the box rests inside the target (3 cm, within 6 mm of the resting height, speed < 0.02 m/s) for >= 10 consecutive steps. A box resting on the tray while still gripped is not yet placed.
+ 6 TIMEOUT - the plotted trajectory ends before any of 1-5 can be decided (e.g. the release is not yet confirmed, or the 10 quiet steps are not complete).
+ 7 INVALID - the plots contain impossible values (NaN, negative forces, teleporting box) or the measured finger position is missing.
+Rules: a box that sinks onto the tray while it is STILL gripped is NOT a drop and NOT yet placed. Contact that vanishes because the gripper is opening is NOT a drop. Commanded opening (executed target rising) and physical opening (measured position rising) are different events; the physical one comes at least one step later. If unsure choose CANNOT_DECIDE (counted as a disagreement unless the branch is flagged ambiguous by the machine).
+Also answer: E1 grasp acquired (TRUE/FALSE/CANNOT_DECIDE); E2 grasp retained from the lift until the gripper COMMAND starts to open or 60 steps after the lift, whichever is first (TRUE/FALSE/CENSORED/CANNOT_DECIDE); E3 box placed after a confirmed release (TRUE/FALSE/CENSORED).
+Record (design only, not scored in kappa): target arrival (yes/no), step of the opening command, step of the physical opening, confirmed release (yes/no), stable placement after the confirmed release (yes/no).
+```
+Unchanged since the review round; consistency with the labeller parameters is checked by `eval/test_g2b_rubric_consistency.py` (same author, NOT independent annotation).
+
+## 2. Annotator qualification and independence (requirements)
+(a) A named person (preferred) with robotics / manipulation literacy who did not write or review the labeller, the contract or the thresholds; (b) has not seen any machine label, candidate name, arm assignment or pose ID of the evaluated branches; (c) signs a written independence statement before receiving data; (d) is not involved in choosing the candidates; (e) a second person is needed as adjudicator and, ideally, as a second annotator on a 20 % overlap. **An AI agent instance (including another instance of the model that built the labeller) is NOT an independent annotator; if the reviewer nevertheless accepts one, the report must disclose the shared origin and the result is labelled "weak independence".** No annotator is assigned, so this remains a hard blocker.
+
+## 3. Blinding procedure
+A script (hashed, run before the annotator is given anything) renders for each sampled branch an anonymised plot sheet: box rise, box distance to the tray centre, executed gripper target, MEASURED finger position, left / right finger force and contact points, box-TCP distance, palm force; random branch IDs; randomised order; no candidate, arm, pose, seed, machine label, event time or threshold line on the plots. The key mapping random ID -> branch is held by a third party (not the annotator, not the labeller author) and opened only after the annotations are locked (hash-committed).
+
+## 4. Fixed sampling strategy
+Seed and quotas are fixed in the freeze file BEFORE the run; the sample is drawn AFTER the run from all branches of all arms by the machine terminal label (used for stratification only): PLACEMENT_SUCCESS 12, CARRY_DROP 8, ACQUISITION_FAILURE 6, RELEASE_OUTSIDE_TARGET 4, PLACEMENT_FAILURE 6 (oversampling RELEASE_NOT_CONFIRMED and NOT_SETTLED when present), TIMEOUT / INVALID 4, plus 4 ambiguity-flagged branches (take all if fewer, then fill from PLACEMENT_SUCCESS) = 44 branches, plus 10 interleaved synthetic gold traces (attention check, outside kappa). A stratum with too few branches contributes all of them and the shortfall is filled from the largest stratum. One pre-registered extension of 20 branches is allowed only if the kappa lower bound is < 0.65 while kappa >= 0.80.
+
+## 5. Ambiguous, CENSORED and INVALID traces
+The annotator may answer TIMEOUT (undecidable within the plotted trajectory), INVALID (impossible values or missing measured finger) or CANNOT_DECIDE. CANNOT_DECIDE counts as a disagreement unless the machine flagged the branch ambiguous (then it is reported separately and is not critical). Machine CENSORED / TIMEOUT must be matched by TIMEOUT; INVALID branches are excluded from kappa but counted and reported. The machine ambiguity flag never changes a label.
+
+## 6. Agreement reporting
+Cohen's kappa on the terminal label (point estimate and 95 % bootstrap CI), the full confusion matrix, per-class precision / recall, binary agreement for E1, E2, E3, the number and list of critical disagreements, gold-trace accuracy; with two annotators also inter-annotator kappa on the 20 % overlap and the machine-vs-consensus kappa.
+
+## 7. PASS / FAIL and adjudication
+PASS iff kappa >= 0.80 and its 95 % lower bound >= 0.65, E2 agreement >= 0.90, gold traces 100 %, and 0 critical disagreements among non-flagged branches (critical = machine success vs annotator drop / failure, machine drop / outside-target vs annotator success, any E1 / E2 disagreement). The analysis code refuses to run without a PASS report whose hash is recorded. FAIL => all labels void, no treatment-effect analysis, the failed audit is reported, the contract is revised and re-frozen and re-run on NEW development poses (the sealed reserve stays sealed). Adjudication by the second person is used only to diagnose disagreements and to revise the contract; **machine labels are never edited or re-labelled to improve agreement**, and the annotator's labels are never changed after the key is opened.
+
+## 8. Personnel blocker
+Annotator (and adjudicator) UNASSIGNED; the plan cannot be executed and no independent-validation claim can be made until named people are provided.

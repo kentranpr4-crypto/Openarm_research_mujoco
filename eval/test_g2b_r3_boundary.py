@@ -30,7 +30,7 @@ for d in range(30, 51):
         if o["endpoints"]["E1"]["value"] != full["endpoints"]["E1"]["value"] and o["endpoints"]["E1"]["value"] != "CENSORED": viol.append(("E1 changed by truncation", d, n))
         if o["endpoints"]["E2"]["value"] not in (full["endpoints"]["E2"]["value"], "CENSORED"): viol.append(("E2 changed by truncation", d, n))
     # the exact decision rows: d = 40 needs rows through t_cmd+42 to verify; d = 41 is rejected at t_cmd+42
-rep = dict(verdict="PASS" if not viol else "FAIL", n_violations=len(viol), violations=viol[:10], table={str(k): v for k, v in table.items()}, e3_ambiguous_flag_by_onset=amb, note="CONFIRM_BUDGET itself is not in the ambiguity bands: onsets t_cmd+39 and +40 are flagged ambiguous by OTHER perturbations (K_REL, OPEN_CONFIRM, ...), but onsets +41 and +42 (one and two rows beyond the budget) are NOT flagged (r3 proposal: add CONFIRM_BUDGET +-1)")
+rep = dict(verdict="PASS" if not viol else "FAIL", n_violations=len(viol), violations=viol[:10], table={str(k): v for k, v in table.items()}, e3_ambiguous_flag_by_onset=amb, note="CONFIRM_BUDGET +-1 is now part of the ambiguity analysis (r3 candidate): onsets t_cmd+40 and +41 are flagged ambiguous by it; onset +42 (two rows beyond the budget) is a decided FALSE that is not flagged by this perturbation; primary labels are unchanged")
 out = ROOT / "outputs/g2b_impl"; (out / "r3_boundary_report.json").write_text(json.dumps(rep, indent=1, default=str))
 if viol: (out / f"r3_boundary_report_FAIL_{time.strftime('%H%M%S')}.json").write_text(json.dumps(rep, indent=1, default=str))
 print(json.dumps(dict(verdict=rep["verdict"], n_violations=len(viol), examples=viol[:5]))); print({d: table[d][:3] for d in (39, 40, 41, 42)}); print({d: amb[d] for d in (39, 40, 41, 42)})

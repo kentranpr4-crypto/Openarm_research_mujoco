@@ -16,7 +16,7 @@ DT = 0.05
 PARAMS = dict(G_CLOSE=0.040, G_ACQ=0.030, F_ACQ=5.0, K_ACQ=5, ACQ_BUDGET=25, R_LIFT=0.03, K_LIFT=3, LIFT_BUDGET=40, F_HELD=2.5, K_LOSS=3, OPEN_RISE=0.004, K_OPEN=2, RET_WIN=60, EARLY_SLIP=15, SHORT_WINDOW=20, OPEN_CONFIRM=0.008, K_REL=3, K_ARR=3, CONFIRM_BUDGET=40, CONTRACT="v2-r2-x4-draft",
               TRAY_X=0.44, TRAY_Y=0.30, REST_Z=0.384, R_REL=0.05, Z_REL=0.05, PLACE_XY=0.03, PLACE_Z=0.006, REST_V=0.02, K_SETTLE=10, SETTLE_BUDGET=40, T_MAX=160)
 BANDS = dict(R_LIFT=0.005, F_ACQ=1.0, F_HELD=0.5, OPEN_RISE=0.001, R_REL=0.005, Z_REL=0.005, PLACE_XY=0.003, PLACE_Z=0.0015, REST_V=0.004, OPEN_CONFIRM=0.002)       # +- perturbation of a decisive threshold [its unit]
-KBANDS = ("K_ACQ", "K_LIFT", "K_LOSS", "K_OPEN", "K_SETTLE", "RET_WIN", "K_REL", "K_ARR")                                                                                         # +-1 step
+KBANDS = ("K_ACQ", "K_LIFT", "K_LOSS", "K_OPEN", "K_SETTLE", "RET_WIN", "K_REL", "K_ARR", "CONFIRM_BUDGET")                       # +-1 step perturbations (ambiguity / sensitivity only; the primary CONFIRM_BUDGET stays 40)                                                                                         # +-1 step
 TERMINALS = ("INVALID", "ACQUISITION_FAILURE", "CARRY_DROP", "RELEASE_OUTSIDE_TARGET", "PLACEMENT_FAILURE", "PLACEMENT_SUCCESS", "TIMEOUT")
 def params_hash(p=PARAMS): return hashlib.sha256(json.dumps(p, sort_keys=True).encode()).hexdigest()
 AMBIGUITY_SPEC = dict(bands=BANDS, k_bands=list(KBANDS), k_delta=1, extra=dict(R_LIFT_sensitivity=0.05))

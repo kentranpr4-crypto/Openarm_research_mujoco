@@ -1,0 +1,13 @@
+# P1 (block pushing) ONE-SEED PILOT: at most 2 hours, hard-capped by the launcher (scripts/p1_pilot.sh). NOT a multi-hour run, NOT multi-seed.
+# Same algorithm and network sizes as the P0 reaching runs that reached 100% held-out success; only the task and the run length differ.
+# Note for any future multi-seed run: train_seed_base must differ per seed (the P0 runs shared one training-goal sequence).
+# Simulation runs on CPU MuJoCo (process-parallel); the networks train on one CUDA GPU chosen by the launcher (CUDA_VISIBLE_DEVICES), never a hidden multi-GPU assumption.
+experiment: {name: pushing_p1_pilot, seed: 1000, output_dir: outputs/supermimic_openarm, algo: supermimic}
+env: {task: pushing, num_envs: 24, backend: subproc, control_hz: 20, max_steps: 0, sim_backend: mujoco_cpu}
+replay: {capacity_per_env: 20000}
+world_model: {hidden: 512, layers: 3, window: 8, batch_size: 2048, updates_per_iter: 10, lr: 0.0002, grad_clip: 1.0, term_weight: 1.0, contact_head: true, reward_head: false}
+actor: {hidden: 512, layers: 3, lr: 0.0002, action_param: delta, action_scale: 1.0, noise_std: 0.1}
+critic: {hidden: 256, layers: 2, lr: 0.0002, epochs: 5, minibatches: 4}
+imagination: {horizon: 16, batch_size: 4096, chunk_size: 1024, gamma: 0.99, lam: 0.95, grad_clip: 1.0, grad_clip_elementwise: 0.1}
+train: {iterations: 8000, steps_per_iter: 4, warmup_steps: 64, eval_interval: 400, eval_episodes: 32, checkpoint_interval: 200, log_interval: 10, save_replay: false, eval_seed_base: 9000000, train_seed_base: 1100000}
+system: {device: cuda:0, precision: fp32, tf32: true, max_vram_gb: 20.0, torch_threads: 4}

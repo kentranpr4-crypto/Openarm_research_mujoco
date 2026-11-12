@@ -55,13 +55,41 @@ class Reaching(Task):
     def failed(self, ctx): return False
 class Pushing(Task):
     name = "pushing"; goal_dim = 2; max_steps = 150; uses_privileged_obs = True; deployable_without_perception = False
-    DEFAULTS = dict(box_x=(0.38, 0.48), box_y=(0.06, 0.18), dist=(0.07, 0.13), angle_deg=(-45.0, 45.0), friction=(0.7, 1.3), tol=0.03, speed_tol=0.03, max_rise=0.01)
+    DEFAULTS = dict(box_x=(0.38, 0.48), box_y=(0.06, 0.18), dist=(0.07, 0.13), angle_deg=(-45.0, 45.0), friction=(0.7, 1.3), mass_scale=(0.6, 1.6), friction_mode="pair_exact", tol=0.03, speed_tol=0.03, max_rise=0.01)
     REWARD_TERMS = ["-3*||box_xy-goal||", "-0.5*||tcp-box||", "+2*exp(-(||box_xy-goal||/0.04)^2)", "-1*max(0, box_z-rest-0.01)/0.01*0.1 (no lifting)"]
     SUCCESS_TEXT = "||box_xy - goal|| < 0.03 m, box speed < 0.03 m/s, box never lifted > 0.01 m (pushed, not carried)"
-    RANDOMIZATION = dict(box_x_m=(0.38, 0.48), box_y_m=(0.06, 0.18), goal_distance_m=(0.07, 0.13), goal_angle_deg=(-45, 45), box_friction_scale=(0.7, 1.3))
+    RANDOMIZATION = dict(box_x_m=(0.38, 0.48), box_y_m=(0.06, 0.18), goal_distance_m=(0.07, 0.13), goal_angle_deg=(-45, 45), box_friction_scale=(0.7, 1.3), box_mass_scale=(0.6, 1.6),
+                         goal_validity="rejection sampling: goal inside the workspace rectangle, the box footprint clear of tray/cube/cylinder at start and goal, and the straight push path clear of them")
+    # ---- geometry used for goal validity (verified against the compiled model by tests/test_p1_env.py) ----------------------------------------------------
+    WORKSPACE = (0.33, 0.56, 0.0, 0.26)                                                             # goal x_min, x_max, y_min, y_max (box centre)
+    BOX_CIRCUMRADIUS = float(np.hypot(BOX_HALF[0], BOX_HALF[1])) + 0.005                             # yaw-independent footprint radius incl. 5 mm margin
+    OBST_RECTS = {"tray": (0.44, 0.30, 0.076, 0.076), "green_cube": (0.52, 0.0, 0.02, 0.02)}        # cx, cy, half_x, half_y
+    OBST_CIRCLES = {"red_cylinder": (0.40, -0.12, 0.02)}                                               # cx, cy, radius
+    @classmethod
+    def _clearance(cls, pt):
+        """smallest distance from the circle of radius BOX_CIRCUMRADIUS centred at pt to any obstacle (negative = overlap)"""
+        c = np.inf
+        for cx, cy, hx, hy in cls.OBST_RECTS.values():
+            dx = max(abs(pt[0] - cx) - hx, 0.0); dy = max(abs(pt[1] - cy) - hy, 0.0); c = min(c, float(np.hypot(dx, dy)) - cls.BOX_CIRCUMRADIUS if (dx > 0 or dy > 0) else -cls.BOX_CIRCUMRADIUS)
+        for cx, cy, r in cls.OBST_CIRCLES.values(): c = min(c, float(np.hypot(pt[0] - cx, pt[1] - cy)) - r - cls.BOX_CIRCUMRADIUS)
+        return c
+    @classmethod
+    def goal_valid(cls, box_xy, goal):
+        """(valid, reason). Reasons: outside_workspace | start_overlaps_obstacle | goal_overlaps_obstacle | path_blocked"""
+        x0, x1, y0, y1 = cls.WORKSPACE
+        if not (x0 <= goal[0] <= x1 and y0 <= goal[1] <= y1): return False, "outside_workspace"
+        if cls._clearance(box_xy) < 0: return False, "start_overlaps_obstacle"
+        if cls._clearance(goal) < 0: return False, "goal_overlaps_obstacle"
+        for f in np.linspace(0.0, 1.0, 41):
+            if cls._clearance(np.asarray(box_xy) + f * (np.asarray(goal) - np.asarray(box_xy))) < 0: return False, "path_blocked"
+        return True, "ok"
     def sample(self, rng):
-        b = np.array([rng.uniform(*self.p["box_x"]), rng.uniform(*self.p["box_y"])]); ang = np.deg2rad(rng.uniform(*self.p["angle_deg"])); r = rng.uniform(*self.p["dist"])
-        g = np.clip(b + r * np.array([np.cos(ang), np.sin(ang)]), [0.33, 0.0], [0.56, 0.26]); return dict(box_xy=tuple(b), box_yaw=float(rng.uniform(-0.3, 0.3)), friction_scale=float(rng.uniform(*self.p["friction"])), goal=g)
+        for attempt in range(200):                                                                     # draw order of the first attempt equals the legacy sampler (no clipping any more)
+            b = np.array([rng.uniform(*self.p["box_x"]), rng.uniform(*self.p["box_y"])]); ang = np.deg2rad(rng.uniform(*self.p["angle_deg"])); r = rng.uniform(*self.p["dist"])
+            g = b + r * np.array([np.cos(ang), np.sin(ang)]); yaw = float(rng.uniform(-0.3, 0.3)); fr = float(rng.uniform(*self.p["friction"])); ms = float(rng.uniform(*self.p["mass_scale"]))
+            ok, why = self.goal_valid(b, g)
+            if ok: return dict(box_xy=tuple(b), box_yaw=yaw, friction_scale=fr, mass_scale=ms, friction_mode=self.p["friction_mode"], goal=g, rejected_samples=attempt)
+        raise RuntimeError("no valid pushing goal found in 200 attempts")
     def reward_torch(self, s, a_exec, goal, tcp):
         bp = s[:, L.BOX_POS]; d = (bp[:, :2] - goal).norm(dim=-1); dt = (tcp - bp).norm(dim=-1); lift = torch.relu(bp[:, 2] - BOX_REST_Z - 0.01) / 0.01
         return -3.0 * d - 0.5 * dt + 2.0 * torch.exp(-(d / 0.04) ** 2) - 0.1 * lift

@@ -25,7 +25,7 @@ class OpenArmTaskEnv:
         self.substeps = int(round(1.0 / (control_hz * self.m.opt.timestep))); mj = self.mj
         self.box_body = self.m.body("blue_box").id; self.box_jnt = self.m.joint("blue_box_free"); self.box_adr = int(self.m.jnt_qposadr[self.box_jnt.id]); self.box_dof = int(self.m.jnt_dofadr[self.box_jnt.id])
         self.tcp_id = self.m.body("openarm_left_hand_tcp").id
-        self.box_geoms = {g for g in range(self.m.ngeom) if self.m.geom_bodyid[g] == self.box_body}; self._fric0 = self.m.geom_friction[list(self.box_geoms)].copy()
+        self.box_geoms = {g for g in range(self.m.ngeom) if self.m.geom_bodyid[g] == self.box_body}; self._fric0 = self.m.geom_friction[list(self.box_geoms)].copy(); self._prio0 = self.m.geom_priority[list(self.box_geoms)].copy(); self._mass0 = float(self.m.body_mass[self.box_body]); self._inertia0 = self.m.body_inertia[self.box_body].copy()
         names = ("openarm_left_right_finger", "openarm_left_left_finger"); fb = [self.m.body(n).id for n in names]
         self.finger_geoms = {b: {g for g in range(self.m.ngeom) if self.m.geom_bodyid[g] == b and self.m.geom_contype[g]} for b in fb}
         hand = {self.m.body(n).id for n in ("openarm_left_hand", "openarm_left_link7")}; self.hand_geoms = {g for g in range(self.m.ngeom) if self.m.geom_bodyid[g] in hand and self.m.geom_contype[g]}
@@ -55,12 +55,17 @@ class OpenArmTaskEnv:
     # ------------------------------------------------------------------------------------------------------------------------------------
     def reset(self, seed):
         rng = np.random.default_rng(int(seed)); cfg = self.task.sample(rng); self.goal = np.asarray(cfg["goal"], np.float32); mj, m, d = self.mj, self.m, self.d
-        self.lab.reset_home(m, d); a = self.box_adr; yaw = cfg["box_yaw"]; d.qpos[a:a + 3] = [cfg["box_xy"][0], cfg["box_xy"][1], BOX_REST_Z]; d.qpos[a + 3:a + 7] = [np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)]; d.qvel[:] = 0
         gl = list(self.box_geoms); m.geom_friction[gl] = self._fric0 * np.array([cfg["friction_scale"], 1.0, 1.0])
+        # pushing only (cfg carries the keys; reaching / pick_place keep the legacy behaviour bit-exactly): MuJoCo combines two geoms' friction with max() when their priorities are equal, so a box friction below the desk's 0.8 had no effect.
+        # priority 1 on the box makes the box-desk pair use the box's own friction (finger geoms already have priority 1, so finger-box contacts are unchanged: max(finger 1.0, box)).
+        m.geom_priority[gl] = 1 if cfg.get("friction_mode") == "pair_exact" else self._prio0
+        if "mass_scale" in cfg:                                                                                 # mass and principal inertia scale together (uniform density, fixed geometry); recomputed from the originals every reset
+            m.body_mass[self.box_body] = self._mass0 * cfg["mass_scale"]; m.body_inertia[self.box_body] = self._inertia0 * cfg["mass_scale"]; mj.mj_setConst(m, d)
+        self.lab.reset_home(m, d); a = self.box_adr; yaw = cfg["box_yaw"]; d.qpos[a:a + 3] = [cfg["box_xy"][0], cfg["box_xy"][1], BOX_REST_Z]; d.qpos[a + 3:a + 7] = [np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)]; d.qvel[:] = 0
         mj.mj_forward(m, d)
         for _ in range(int(0.2 / m.opt.timestep)): mj.mj_step(m, d)
         self.prev_ctrl = d.ctrl.copy(); self.hold_right = self.prev_ctrl[8:].copy(); self.t = 0; self.held = 0; self.ever_success = False; self.box_max_rise = 0.0; self.tcp_prev = self.tcp()
-        self.episode_return = 0.0; self.episode_info = dict(seed=int(seed), friction_scale=cfg["friction_scale"], box_xy=list(map(float, cfg["box_xy"])), goal=self.goal.tolist())
+        self.episode_return = 0.0; self.episode_info = dict(seed=int(seed), friction_scale=cfg["friction_scale"], mass_kg=float(m.body_mass[self.box_body]), inertia_diag_kgm2=m.body_inertia[self.box_body].tolist(), mass_scale=cfg.get("mass_scale"), friction_mode=cfg.get("friction_mode"), rejected_samples=cfg.get("rejected_samples"), box_yaw=float(cfg["box_yaw"]), box_xy=list(map(float, cfg["box_xy"])), goal=self.goal.tolist())
         s = self.state_vec(); return s, self.goal.copy(), self.tcp()
     def step(self, target_left):
         """target_left: (8,) ABSOLUTE joint-position target for the left arm+gripper.  The original ActionAdapter clips and slew-limits it."""

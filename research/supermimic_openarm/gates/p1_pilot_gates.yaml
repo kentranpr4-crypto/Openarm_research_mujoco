@@ -1,0 +1,60 @@
+# PRE-REGISTERED monitoring gates for the P1 (pushing) actor pilot: 1 seed, <= 2 h.  Record `sha256sum` of this file BEFORE the pilot starts; thresholds must NOT be edited after the pilot has produced any result.
+# Applied by:  python -m research.supermimic_openarm.p1_gate_check ...   (reads measured JSON only; never edits a threshold or a run directory)
+# Evidence base for the numbers: proxy world models on proxy data (docs/ai-native/tasks/2026-11-11-supermimic-p1-wm-mitigation-report.md); they are justified there and are NOT tuned on pilot data.
+# Evaluation frequency: every 400 training iterations on a COPY of the newest checkpoint (CPU, ~5 min), plus once at the end.  STOP = stop the pilot, keep all artefacts, report; no automatic restart, no threshold change.
+# 'consecutive': STOP only if the last k evaluations are all beyond the stop threshold (one bad evaluation is a WARN).  Hard safety gates stop on the first violation.
+gates:
+  G1_free_space:
+    metric: "mean world-model box position error (mm) after h=16 open-loop steps on FREE-SPACE windows (no finger/hand contact for >= 3 states before and during the window); same executed actions as the simulator"
+    validation_data: "frozen val split of outputs/p1_validation/wm_eval_dataset_v1.npz (120 episodes, seeds 25,100,000+, scripted expert / noisy / poke / random data); the SAME file at every evaluation"
+    command: "p1_wm_eval --checkpoint CKPT --dataset outputs/p1_validation/wm_eval_dataset_v1.npz ..."
+    warn: 5.0
+    stop: 8.0
+    consecutive: 2
+    justification: "success tolerance is 30 mm; 8 mm = 27% of it and ~2x the 4.1-4.7 mm measured for three ungated proxy models (seeds 0-2: 4.31 / 4.27 / 4.65 mm; the contact-gated variant: 0.79 mm); a still box must not drift.  5 mm sits just above the ungated range, so an ungated pilot model can WARN here but only STOP if it gets clearly worse"
+  G2_contact:
+    metric: "max over {first_contact, sustained} windows of (WM box error / stationary-baseline box error) at h=8"
+    validation_data: "same frozen val split"
+    warn: 0.6
+    stop: 0.8
+    consecutive: 2
+    justification: "measured proxy ratios 0.39 and 0.37; a model that is only 20% better than 'the box does not move' has lost its contact physics; windows with n < 30 are ignored"
+  G3_return_gap:
+    metric: "mean (imagined - real) return over 16 steps on trajectories rolled out by the CHECKPOINT'S OWN actor (held-out seeds 27,300,000+, same executed actions replayed through the world model)"
+    validation_data: "32 held-out goals, p1_wm_eval --actor-episodes 32"
+    min_windows: 100
+    warn: 1.0
+    stop: 3.0
+    consecutive: 2
+    justification: "recorded-action gap of the proxy model 0.08 (largest regime 0.38); under adversarial optimisation 9.0.  3.0 = one third of the exploitation level and ~12% of the expert's 16-step return (~25); 1.0 flags drift early"
+  G4_heldout_success:
+    metric: "strict success rate of the actor on held-out simulator goals (3 cm, 0.03 m/s, never lifted > 1 cm, held 5 steps)"
+    validation_data: "64 goals, seeds 27,000,000+, p1_actor_eval (never used for training 1,100,000+, selection 9,000,000+, expert tuning 24,000,000+, WM data 25,000,000+)"
+    min_episodes: 64
+    mid_fraction: 0.5
+    mid_stop_below: 0.05
+    final_pass_at_least: 0.40
+    final_wilson_lower_at_least: 0.25
+    justification: "expert 86.7%; a zero-effort policy succeeds only when the box starts at the goal (~0%).  At half the budget a success rate below 5% (<= 3/64) means no learning signal reached the task; 40% with Wilson lower bound >= 25% is the bar for proposing a longer run"
+  G5_gradient_quality:
+    metric: "fraction of states in which the REAL simulator return (16 steps) is higher after a 0.5-norm perturbation along +WM-gradient than along -WM-gradient (0.5 = chance)"
+    validation_data: "24+ states from the frozen val split (expert/poke windows), p1_wm_eval --grad-states 24"
+    min_states: 24
+    warn: 0.65
+    stop: 0.45
+    consecutive: 2
+    justification: "chance is 0.5; measured on proxy models (24 states, real MuJoCo return): 0.83-0.88 for every arm, so 0.65 flags a clear loss of signal and a fraction below 0.45 is at or below chance, i.e. backprop through the dynamics is not usable.  The earlier box-displacement response test (n=10 measurable, 50% sign agreement) was low-powered and is NOT the gate quantity"
+  G6_action_safety:
+    metric: "over the 64 held-out actor episodes: executed controls outside the ctrl range, slew above the limit, non-finite states, right-arm command changes (all must be 0); fraction of episodes in which the box left the table; minimum box-robot contact distance"
+    validation_data: "same 64 episodes as G4"
+    stop_box_left_table: 0.10
+    stop_penetration_m: -0.004
+    warn_penetration_m: -0.002
+    justification: "limits are enforced by the original adapter, so any violation is a software fault (hard STOP).  -2 mm is the pre-registered environment threshold (V3c); -4 mm = 2x.  10% box-off-table episodes = the policy is learning to throw the box"
+  G7_gpu_resources:
+    metric: "peak torch VRAM (GiB) from p1_benchmark, other compute process appearing on the chosen GPU, wall clock, projected iterations inside the 2 h cap"
+    validation_data: "p1_benchmark output for the chosen GPU UUID (run immediately before the pilot)"
+    stop_peak_vram_gb: 16.0
+    wall_clock_cap_s: 7200
+    min_iterations_in_cap: 4000
+    justification: "per-process cap in the config is 20 GiB; 16 GiB leaves headroom on a 32 GB card; the cap is enforced by the launcher (timeout).  If fewer than 4000 iterations fit in 2 h (half of the planned 8000) the plan is reduced BEFORE launching, not mid-run.  Another compute process on the GPU (e.g. OpenArm-WAM) is a launch-blocker, never something the pilot works around"

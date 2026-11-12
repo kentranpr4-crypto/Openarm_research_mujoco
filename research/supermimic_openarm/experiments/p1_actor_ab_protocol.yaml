@@ -1,0 +1,41 @@
+# P1 controlled actor experiment B0 / B1 / B2 / B3 -- PROTOCOL ab-1.0 (DRAFT FOR APPROVAL; nothing here is authorised to run).  Record `sha256sum` of this file before any run; do not edit it after the first result.
+# B0 is the ORIGINAL SuperMimic P1 trainer (train.py).  B1-B3 are opt-in (p1_train_variant.py) and differ from B0 ONLY by --variant / --variant-arg; the config file, seeds, goals, budget and evaluation protocol are identical.
+protocol: {id: ab-1.0, status: draft_for_approval, gates_file: research/supermimic_openarm/gates/p1_pilot_gates.yaml, gates_sha256_registered: a7dc91ca66f6350d4798602aa86258a4c01777d9d123f2e724519499d24a8dca}
+shared:
+  config: research/supermimic_openarm/configs/pushing_p1_pilot.yaml        # 1 seed, 24 CPU envs, WM/actor/critic sizes of the P0 runs
+  experiment_seed: 1000                       # same network init / noise stream for every variant (paired design)
+  train_seed_base: 1100000                    # same training goal sequence for every variant (NOT shared with P0, whose runs shared one sequence)
+  budget_iterations: "N = min(8000, floor(0.9 * 7200 / iteration_estimate_s)) from the p1_benchmark of the pilot GPU; identical for every variant"
+  gpu: "one explicit GPU UUID, the same card for all variants, variants run SEQUENTIALLY (never in parallel on one card), no other compute process on it"
+  wall_clock_cap_s_per_run: 7200
+  checkpoint_for_gates: "COPY of the newest latest.pt at iteration 400, 800, ...; best.pt is descriptive only"
+data_separation:                              # each set has exactly one role
+  training_goals: {seeds: "episode_seed(1100000, env, episode)", role: "collect data / train"}
+  checkpoint_selection: {seeds: "9,000,000+ (32 goals, trainer eval)", role: "pick best.pt by return; never reported as a result"}
+  world_model_validation: {data: outputs/p1_validation/wm_eval_dataset_v1.npz, val_seeds: "25,100,000+ (120 episodes)", role: "gates G1, G2, G5 (frozen file; record its sha256)"}
+  monitoring_goals: {seeds: "27,000,000+ (64 actor goals; 27,300,000+ 32 actor goals for G3)", role: "gates G3, G4, G6 during the run"}
+  final_evaluation: {seeds: "28,000,000-28,000,199 (200 goals)", role: "the ONLY primary endpoint; evaluated once per variant after training; never looked at during a run; never used to tune anything"}
+variants:
+  b0: {command: "python -m research.supermimic_openarm.p1_train_variant --variant b0", what: "original trainer", evidence: "baseline"}
+  b1: {command: "... --variant b1 --variant-arg rho=0.1 --variant-arg ema=0.02", what: "action trust region around an EMA copy of the actor (imagination only)", evidence: "proxy open-loop trust region +/-0.1: optimism +8.4 -> +2.8, real-return gain +1.7 [0.6, 3.0]"}
+  b2: {command: "... --variant b2 --variant-arg lam=3.0 --variant-arg members=3", what: "3-member world-model ensemble; imagined reward = member mean - 3 x 100 x box-position std", evidence: "proxy penalty lam=3: optimism +8.4 -> +2.4, real-return gain +3.2 [1.5, 4.8], disagreement 11.5 -> 0.7; costs 3x WM training and imagination"}
+  b3: {command: "... --variant b3", what: "contact-gated box dynamics in the world model", evidence: "proxy: free-space drift 4.3 -> 0.79 mm; did NOT reduce actor exploitation (optimism +11.2)"}
+measurements:                                  # every one is produced by an existing, tested tool
+  actual_mujoco_return: {tool: "p1_actor_eval (mean return per episode) and p1_run_summary (trainer eval, selection data)", data: "final_evaluation / monitoring_goals"}
+  heldout_strict_success: {tool: p1_actor_eval, data: final_evaluation, stat: "Wilson 95%; paired exact McNemar vs B0 on the SAME 200 goals"}
+  predicted_vs_realized_return: {tool: "p1_wm_eval --actor-episodes 32", metric: "matched_returns_actor.mean_gap (gate G3)"}
+  free_space_and_contact_error: {tool: p1_wm_eval, metric: "box_prediction.table h16_free, h8_first_contact, h8_sustained (gates G1, G2)"}
+  model_exploitation: {tool: "p1_wm_eval --opt-states 24", metric: "optimism_under_optimisation: gap after optimising 16 actions on the imagined return vs real gain"}
+  gradient_direction: {tool: "p1_wm_eval --grad-states 24", metric: "return_gradient_check.fraction_real_return_higher_along_plus_gradient_than_minus (gate G5)"}
+  update_magnitude: {tool: "p1_run_summary --ckpt-copies", metric: "actor L2 step between the 400-iteration checkpoint copies; actor_grad_norm series; b1_mean_abs_dev_from_ref, b1_frac_outside_radius; b2_mean_box_disagreement_cm"}
+  cost: {tool: "p1_run_summary + p1_benchmark", metric: "env_transitions, wall-clock and GPU-reserved hours, seconds per iteration, peak VRAM, GPU utilisation"}
+phases:
+  pilot_0: {variants: [b0], budget: "<= 2 h, 1 seed, gates every 400 iterations", requires: "separate approval; benchmark on the pilot UUID; gates hash recorded", purpose: "does exploitation / free-space drift happen in real training?"}
+  ab_1: {variants: [b0, b1, b2, b3], budget: "N iterations each (same N), 1 seed each, sequential, <= 2 h each (<= 8 GPU-h total)", requires: "separate approval AFTER pilot_0 is reviewed", analysis: "exploratory: one seed per variant cannot separate a variant effect from seed variance; replicate any promising variant on >= 2 new seeds (experiment_seed AND train_seed_base) before any claim"}
+stop_conditions:
+  all_variants: "gates G1-G7 exactly as registered (STOP = stop that run, keep artefacts, report)"
+  additionally: ["actor_grad_norm non-finite, or bad_grads > 0 in more than 1% of iterations -> STOP", "b1: b1_frac_outside_radius > 0.9 for 400 consecutive iterations (the clamp swallows the gradient: no learning signal) -> STOP and report", "b2: any extra member non-finite loss -> STOP"]
+decision_rules:
+  primary_endpoint: "held-out strict success on the 200 final goals"
+  better_than_b0: "success difference >= +10 percentage points AND exact McNemar p < 0.05, OR B0 hits a STOP gate while the variant does not; otherwise 'no evidence of difference'"
+  no_post_hoc: "thresholds, seeds and the primary endpoint are fixed by this file; any change is a new protocol version with a new hash"
